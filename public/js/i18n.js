@@ -1,3 +1,4 @@
+import { EXTRA } from "./lang-extra.js";
 // Traductions FR / EN. Langue : choix mémorisé > langue du navigateur > anglais.
 const DICT = {
   fr: {
@@ -97,6 +98,9 @@ const DICT = {
     "err.dup_daily": "A daily score has already been saved from this connection.", "err.dup": "Score already saved.", "err.server": "Server error.", "err.net": "Network error.",
   },
 };
+
+Object.assign(DICT.fr, EXTRA.fr, { "stat.len": "Longueur de crête (m)", "stat.el": "Altitude (m)", "stat.ca": "Bassin versant (km²)" });
+Object.assign(DICT.en, EXTRA.en, { "stat.len": "Crest length (m)", "stat.el": "Elevation (m)", "stat.ca": "Catchment area (km²)" });
 
 const KEY = "geodam-lang";
 let lang = "en";

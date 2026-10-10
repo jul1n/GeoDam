@@ -1,8 +1,16 @@
-// Logique de jeu partagée client + serveur : le Worker rejoue les parties pour recalculer le score.
+// Logique de jeu partagée client + serveur : le Worker (ou le mode démo) rejoue les parties pour recalculer le score.
 export const MAP_ROUNDS = 5;
 export const DAILY_TRIES = 6;
 export const HILO_CAP = 60;
-export const HILO_STATS = { h: "Hauteur (m)", v: "Volume du réservoir (hm³)", y: "Année de mise en service", mw: "Puissance installée (MW)" };
+export const MAX_HINTS = 3;       // indices payants en carte muette : -10 % du score de la manche par indice
+export const HINT_COST = 0.1;
+export const MISSION_KNOWN = 2;   // manches « étalon » (coordonnées connues) servant à pondérer la confiance
+export const MISSION_UNKNOWN = 3; // manches où le joueur propose une localisation pour un barrage sans coordonnées
+export const MISSION_BONUS = 500; // points par contribution
+export const HILO_STATS = {
+  h: "Hauteur (m)", v: "Volume du réservoir (hm³)", y: "Année de mise en service", mw: "Puissance installée (MW)",
+  len: "Longueur de crête (m)", el: "Altitude (m)", ca: "Bassin versant (km²)",
+};
 
 export function xfnv1a(str) {
   let h = 2166136261 >>> 0;
@@ -33,6 +41,7 @@ export function bearingDeg(la1, lo1, la2, lo2) {
 export const ARROWS = ["⬆️", "↗️", "➡️", "↘️", "⬇️", "↙️", "⬅️", "↖️"];
 export const arrowFor = (deg) => ARROWS[Math.round(deg / 45) % 8];
 export const mapPoints = (km, scale = 1500) => Math.round(5000 * Math.exp(-km / scale));
+export const hintFactor = (h) => 1 - HINT_COST * Math.min(MAX_HINTS, Math.max(0, h | 0));
 
 // Réglages de difficulté selon la zone : le monde est noté sur ~1 500 km, un pays à l'échelle de son étendue.
 export const WORLD = { scale: 1500, foundKm: 25, distinct: true };
@@ -44,10 +53,10 @@ export function poolInfo(dams, scope) {
   return { scale, foundKm: Math.max(3, scale / 60), distinct: false };
 }
 
-const okPoint = (p) => Array.isArray(p) && p.length === 2 && Math.abs(p[0]) <= 90 && p.every(Number.isFinite);
+const okPoint = (p, len = 2) => Array.isArray(p) && p.length === len && Math.abs(p[0]) <= 90 && p.every(Number.isFinite);
 export const wrapLng = (lng) => ((((lng + 180) % 360) + 360) % 360) - 180;
 
-// ---------- Mode 1 : carte muette ----------
+// ---------- Mode 1 : carte muette (réponse = [lat, lng, indicesUtilisés]) ----------
 export function pickMapRounds(dams, seed, distinct = true) {
   const r = rngFrom("map:" + seed), out = [], iso = new Set();
   for (let g = 0; out.length < MAP_ROUNDS && g < 1000; g++) {
@@ -58,21 +67,22 @@ export function pickMapRounds(dams, seed, distinct = true) {
   return out;
 }
 export function mapScore(dams, seed, guesses, info = WORLD) {
-  if (!Array.isArray(guesses) || guesses.length !== MAP_ROUNDS || !guesses.every(okPoint)) return null;
+  if (!Array.isArray(guesses) || guesses.length !== MAP_ROUNDS || !guesses.every((g) => okPoint(g, 3) && g[2] >= 0 && g[2] <= MAX_HINTS)) return null;
   const rounds = pickMapRounds(dams, seed, info.distinct).map((i, k) => {
     const d = dams[i], km = distanceKm(guesses[k][0], guesses[k][1], d.la, d.lo);
-    return { km, pts: mapPoints(km, info.scale) };
+    return { km, pts: Math.round(mapPoints(km, info.scale) * hintFactor(guesses[k][2])) };
   });
   return { score: rounds.reduce((s, r) => s + r.pts, 0), rounds };
 }
 
 // ---------- Mode 2 : plus haut / plus bas ----------
 const validCache = new WeakMap();
+const statOk = (d, k) => d[k] != null && (k === "y" || k === "el" || d[k] > 0);
 function validIdx(dams) {
   let v = validCache.get(dams);
   if (!v) {
     v = {};
-    for (const k of Object.keys(HILO_STATS)) v[k] = dams.flatMap((d, i) => (d[k] != null && (k !== "mw" || d.mw > 0) ? [i] : []));
+    for (const k of Object.keys(HILO_STATS)) v[k] = dams.flatMap((d, i) => (statOk(d, k) ? [i] : []));
     validCache.set(dams, v);
   }
   return v;
@@ -81,7 +91,7 @@ export function hiloSequence(dams, seed, n) {
   const r = rngFrom("hilo:" + seed), valid = validIdx(dams), steps = [];
   let a = Math.floor(r() * dams.length);
   for (let i = 0; i < n; i++) {
-    const ks = Object.keys(HILO_STATS).filter((k) => dams[a][k] != null && (k !== "mw" || dams[a].mw > 0) && valid[k].length >= 8);
+    const ks = Object.keys(HILO_STATS).filter((k) => statOk(dams[a], k) && valid[k].length >= 8);
     const k = ks[Math.floor(r() * ks.length)], list = valid[k];
     let b = a;
     for (let g = 0; g < 100 && (b === a || dams[b][k] === dams[a][k]); g++) b = list[Math.floor(r() * list.length)];
@@ -109,7 +119,7 @@ export function dailyIndex(dams, date) {
   return top[xfnv1a("daily:" + date) % top.length];
 }
 export function dailyScore(dams, date, guesses, info = WORLD) {
-  if (!Array.isArray(guesses) || !guesses.length || guesses.length > DAILY_TRIES || !guesses.every(okPoint)) return null;
+  if (!Array.isArray(guesses) || !guesses.length || guesses.length > DAILY_TRIES || !guesses.every((g) => okPoint(g))) return null;
   const d = dams[dailyIndex(dams, date)];
   let best = Infinity;
   for (let i = 0; i < guesses.length; i++) {
@@ -119,4 +129,34 @@ export function dailyScore(dams, date, guesses, info = WORLD) {
   }
   if (guesses.length < DAILY_TRIES) return null; // partie inachevée
   return { score: Math.round(1400 * Math.exp(-best / info.scale)), found: false, tries: DAILY_TRIES };
+}
+
+// ---------- Mode 4 : mission cartographe (compléter les coordonnées manquantes du registre) ----------
+// 5 manches : 2 « étalons » (barrages connus, notés) + 3 barrages SANS coordonnées (le joueur propose un emplacement).
+export function pickMissionRounds(known, missing, seed) {
+  const r = rngFrom("mission:" + seed), k = [], m = [];
+  for (let g = 0; k.length < MISSION_KNOWN && g < 500; g++) { const i = Math.floor(r() * known.length); if (!k.includes(i)) k.push(i); }
+  for (let g = 0; m.length < MISSION_UNKNOWN && g < 500; g++) { const i = Math.floor(r() * missing.length); if (!m.includes(i)) m.push(i); }
+  const rounds = [...k.map((i) => ({ src: "k", i })), ...m.map((i) => ({ src: "m", i }))];
+  for (let i = rounds.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [rounds[i], rounds[j]] = [rounds[j], rounds[i]]; }
+  return rounds;
+}
+export function missionScore(known, missing, seed, guesses) {
+  const n = MISSION_KNOWN + MISSION_UNKNOWN;
+  if (!Array.isArray(guesses) || guesses.length !== n || !guesses.every((g) => okPoint(g))) return null;
+  const rounds = pickMissionRounds(known, missing, seed);
+  let pts = 0, kn = 0; const contrib = [];
+  rounds.forEach((rd, idx) => {
+    const g = guesses[idx];
+    if (rd.src === "k") { const d = known[rd.i]; pts += mapPoints(distanceKm(g[0], g[1], d.la, d.lo)); kn++; }
+    else contrib.push({ id: missing[rd.i].id, la: g[0], lo: g[1] });
+  });
+  const trust = pts / (kn * 5000);
+  return { score: pts + MISSION_BONUS * contrib.length, trust, contrib };
+}
+// médiane géographique pondérée simple (lat/lon séparées) + dispersion maximale autour d'elle
+export function consensus(points) {
+  const med = (a) => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  const la = med(points.map((p) => p.la)), lo = med(points.map((p) => p.lo));
+  return { la, lo, n: points.length, spread: Math.max(...points.map((p) => distanceKm(la, lo, p.la, p.lo))) };
 }

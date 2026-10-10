@@ -1,2 +1,3 @@
 SECRET=change-me-long-random-string
 IP_MODE=raw
+ADMIN_TOKEN=change-me-too

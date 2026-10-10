@@ -1,13 +1,17 @@
 import dams from "../public/data/dams.json";
 import countries from "../public/data/countries.json";
-import { mapScore, hiloScore, dailyScore, poolInfo, MAP_ROUNDS } from "../public/js/shared.js";
+import missing from "../public/data/missing.json";
+import { mapScore, hiloScore, dailyScore, missionScore, consensus, poolInfo, MAP_ROUNDS } from "../public/js/shared.js";
 
-const MODES = ["map", "hilo", "daily"];
+const MODES = ["map", "hilo", "daily", "mission"];
 const TOP_N = 50;            // il faut être dans le top 50 pour pouvoir inscrire son nom
 const SESSION_TTL = 2 * 3600 * 1000;
-const MIN_MS = { map: 3000 * MAP_ROUNDS, daily: 3000, hilo: 1200 }; // temps minimum plausible (par manche / par réponse)
+const MIN_MS = { map: 3000 * MAP_ROUNDS, mission: 3000 * MAP_ROUNDS, daily: 3000, hilo: 1200 }; // temps minimum plausible (par manche / par réponse)
 const NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N} _.\-]{1,15}$/u;
 const SUBMITS_PER_HOUR = 10;
+const CONTRIB_PER_HOUR = 60;      // propositions de coordonnées max par IP et par heure
+const MIN_TRUST = 0.15;           // en dessous (clics au hasard sur les barrages étalons), les propositions ne sont pas retenues
+const missingIds = new Set(missing.map((m) => m.id));
 const ISOS = new Set(countries.map((c) => c.iso));
 const poolCache = new Map(); // ISO -> {pool, info} (reste en mémoire tant que l'isolate vit)
 
@@ -60,7 +64,7 @@ const periodFor = (mode, sess) => (mode === "daily" ? sess.seed : "all");
 // ---------- routes ----------
 async function startSession(request, env) {
   const { mode, scope = "world" } = await request.json().catch(() => ({}));
-  if (!MODES.includes(mode) || !okScope(scope)) return fail("bad_mode");
+  if (!MODES.includes(mode) || !okScope(scope) || (mode === "mission" && scope !== "world")) return fail("bad_mode");
   const seed = mode === "daily" ? today() : crypto.randomUUID().slice(0, 8);
   const sess = { m: mode, sc: scope, seed, t: Date.now(), id: crypto.randomUUID() };
   return json({ token: await sign(env, sess), seed, mode, scope });
@@ -79,17 +83,68 @@ async function finish(request, env) {
   if (sess.m === "map") res = mapScore(zone.pool, sess.seed, body.guesses, zone.info);
   else if (sess.m === "hilo") res = hiloScore(zone.pool, sess.seed, body.answers);
   else if (sess.m === "daily") res = dailyScore(zone.pool, sess.seed, body.guesses, zone.info);
+  else if (sess.m === "mission") res = missionScore(dams, missing, sess.seed, body.guesses);
   if (!res) return fail("invalid_game");
 
-  const units = sess.m === "map" ? 1 : sess.m === "daily" ? body.guesses.length : body.answers.length;
+  const units = sess.m === "map" || sess.m === "mission" ? 1 : sess.m === "daily" ? body.guesses.length : body.answers.length;
   if (age < MIN_MS[sess.m] * units) return fail("too_fast", 422);
 
   const period = periodFor(sess.m, sess);
   const { results } = await env.DB.prepare(
     "SELECT COUNT(*) AS n FROM scores WHERE scope=?4 AND mode=?1 AND period=?2 AND hidden=0 AND score>?3").bind(sess.m, period, res.score, sess.sc).all();
+  let community = null;
+  if (sess.m === "mission") community = await storeContributions(request, env, sess, res);
   const qualifies = res.score > 0 && results[0].n < TOP_N;
   const claim = qualifies ? await sign(env, { k: 1, m: sess.m, sc: sess.sc, p: period, s: res.score, id: sess.id, t: Date.now() }) : null;
-  return json({ ...res, qualifies, claim, rank: results[0].n + 1 });
+  const { contrib, ...pub } = res;
+  return json({ ...pub, qualifies, claim, rank: results[0].n + 1, community });
+}
+
+// ---------- mission cartographe : propositions de coordonnées pour les barrages sans géolocalisation ----------
+async function storeContributions(request, env, sess, res) {
+  const out = { saved: 0, trust: Math.round(res.trust * 100), items: [] };
+  if (res.trust < MIN_TRUST) return out;
+  const ip = await playerIp(request, env);
+  const { results: rc } = await env.DB.prepare("SELECT COUNT(*) AS n FROM contributions WHERE ip=?1 AND created_at > datetime('now','-1 hour')").bind(ip).all();
+  if (rc[0].n >= CONTRIB_PER_HOUR) return out;
+  for (const c of res.contrib) {
+    if (!missingIds.has(c.id)) continue;
+    const { results: others } = await env.DB.prepare("SELECT la, lo FROM contributions WHERE dam_id=?1 AND trust>=0.3").bind(c.id).all();
+    const r = await env.DB.prepare("INSERT OR IGNORE INTO contributions (sid,dam_id,la,lo,trust,ip) VALUES (?1,?2,?3,?4,?5,?6)")
+      .bind(sess.id, c.id, c.la, c.lo, res.trust, ip).run();
+    if (r.meta?.changes) out.saved++;
+    const cons = others.length ? consensus(others) : null;
+    out.items.push({ id: c.id, others: others.length, kmToCommunity: cons ? Math.round(distance(c, cons)) : null });
+  }
+  return out;
+}
+const distance = (a, b) => { const r = Math.PI / 180, x = Math.sin(((b.la - a.la) * r) / 2) ** 2 + Math.cos(a.la * r) * Math.cos(b.la * r) * Math.sin(((b.lo - a.lo) * r) / 2) ** 2; return 12742 * Math.asin(Math.min(1, Math.sqrt(x))); };
+
+async function consensusRows(env) {
+  const { results } = await env.DB.prepare("SELECT dam_id, la, lo, trust FROM contributions WHERE trust>=0.3 LIMIT 50000").all();
+  const by = new Map();
+  for (const r of results) { if (!by.has(r.dam_id)) by.set(r.dam_id, []); by.get(r.dam_id).push(r); }
+  return [...by].map(([id, pts]) => ({ id, ...consensus(pts), trust: +(pts.reduce((s, p) => s + p.trust, 0) / pts.length).toFixed(2) }));
+}
+async function missionProgress(env) {
+  const rows = await consensusRows(env);
+  const { results } = await env.DB.prepare("SELECT COUNT(*) AS n, COUNT(DISTINCT ip) AS p FROM contributions").all();
+  return json({ proposals: results[0].n, contributors: results[0].p, damsTouched: rows.length,
+    validated: rows.filter((r) => r.n >= 3 && r.spread <= 50).length, pool: missing.length, totalMissing: 20267 });
+}
+// export réservé à l'équipe ICOLD (en-tête Authorization: Bearer <ADMIN_TOKEN>) : candidats à la validation
+async function adminContributions(request, url, env) {
+  if (!env.ADMIN_TOKEN || request.headers.get("Authorization") !== `Bearer ${env.ADMIN_TOKEN}`) return fail("invalid_claim", 401);
+  const meta = new Map(missing.map((m) => [m.id, m]));
+  const rows = (await consensusRows(env)).map((r) => ({ dam_id: r.id, name: meta.get(r.id)?.n, country: meta.get(r.id)?.ce, river: meta.get(r.id)?.r,
+    lat: +r.la.toFixed(5), lon: +r.lo.toFixed(5), proposals: r.n, spread_km: Math.round(r.spread), avg_trust: r.trust,
+    status: r.n >= 3 && r.spread <= 50 ? "ready_for_review" : "needs_more_votes" }));
+  if (url.searchParams.get("format") === "csv") {
+    const head = Object.keys(rows[0] || { dam_id: 0 });
+    const csv = [head.join(","), ...rows.map((r) => head.map((k) => JSON.stringify(r[k] ?? "")).join(","))].join("\n");
+    return new Response(csv, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": "attachment; filename=geodam-contributions.csv" } });
+  }
+  return json({ rows });
 }
 
 async function submit(request, env) {
@@ -136,7 +191,9 @@ export default {
       if (url.pathname === "/api/finish" && request.method === "POST") return await finish(request, env);
       if (url.pathname === "/api/submit" && request.method === "POST") return await submit(request, env);
       if (url.pathname === "/api/leaderboard" && request.method === "GET") return await leaderboard(url, env);
-    } catch (e) { return fail("server", 500); }
+      if (url.pathname === "/api/mission/progress" && request.method === "GET") return await missionProgress(env);
+      if (url.pathname === "/api/admin/contributions" && request.method === "GET") return await adminContributions(request, url, env);
+    } catch (e) { console.error("api error", e?.stack || e); return fail("server", 500); }
     return fail("not_found", 404);
   },
 };

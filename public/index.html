@@ -6,32 +6,43 @@
   <title>GéoDam</title>
   <meta name="description" content="">
   <meta name="theme-color" content="#111a4c">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="icon" type="image/png" href="/icons/favicon-64.png">
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/favicon-64.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="GéoDam">
-  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <a class="skip" href="#app" data-i18n="skip"></a>
+  <div id="demo-banner" class="demo-banner" hidden data-i18n="demo.banner"></div>
   <header class="top">
     <div class="top-in">
-      <a href="/" class="logo" id="logo">Géo<b>Dam</b></a>
-      <nav>
-        <button id="btn-install" class="ghost" hidden data-i18n="nav.install"></button>
-        <div id="lang" class="lang" role="group" aria-label="Language" hidden>
-          <button data-l="fr" class="ghost">FR</button><button data-l="en" class="ghost">EN</button>
-        </div>
-        <button id="btn-home" class="ghost" hidden data-i18n="nav.home"></button>
+      <a href="#/" class="logo" id="logo">Géo<b>Dam</b></a>
+      <nav id="nav" aria-label="Navigation">
+        <a href="#/" data-i18n="nav.play"></a>
+        <a href="#/explore" data-i18n="nav.explore"></a>
+        <a href="#/register" data-i18n="nav.register"></a>
+        <a href="#/glossary" data-i18n="nav.glossary"></a>
+        <a href="#/about" data-i18n="nav.about"></a>
       </nav>
+      <div class="tools">
+        <button id="btn-install" class="ghost" hidden data-i18n="nav.install"></button>
+        <div id="lang" class="lang" role="group" aria-label="Language / Langue">
+          <button data-l="fr" class="ghost" lang="fr">FR</button><button data-l="en" class="ghost" lang="en">EN</button>
+        </div>
+      </div>
     </div>
   </header>
-  <main id="app" aria-live="polite"></main>
-  <footer><p data-i18n="foot.data"></p></footer>
-  <script src="/vendor/leaflet/leaflet.js"></script>
-  <script type="module" src="/js/app.js"></script>
+  <main id="app" tabindex="-1" aria-live="polite"></main>
+  <footer>
+    <p data-i18n="foot.data"></p>
+    <p><a href="#/about" data-i18n="foot.about"></a> · <a href="https://github.com/jul1n/GeoDam" target="_blank" rel="noopener" data-i18n="foot.src"></a></p>
+  </footer>
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -80,6 +80,8 @@ def main():
     d["vol"] = pd.to_numeric(d[vol_c], errors="coerce") / 1000  # 1000 m3 -> hm3
     d["mw"] = pd.to_numeric(d["Elec. Power (MW)"], errors="coerce")
     d["year"] = pd.to_numeric(d["Year"], errors="coerce")
+    num = lambda prefix: pd.to_numeric(d[next(c for c in d.columns if c.startswith(prefix))], errors="coerce")
+    d["len"], d["el"], d["ca"] = num("Length (m)"), num("Elevation"), num("Catchment")
     d.loc[(d.year < 1000) | (d.year > 2026), "year"] = np.nan  # dates fantaisistes / barrages « en projet »
 
     d["ckey"] = d["iso"].astype(str).str.split("/").str[0]  # barrage transfrontalier -> 1er pays
@@ -101,6 +103,10 @@ def main():
     def title(s):
         return s.title() if s else s
 
+    def txt(v):
+        v = str(v).strip() if isinstance(v, str) else None
+        return v[:60].title() if v else None
+
     def records(df):
         out = []
         for _, r in df.iterrows():
@@ -118,6 +124,10 @@ def main():
                 "ci": title(r["City"]) if isinstance(r["City"], str) else None,
                 "s": title(r["St/Pr"]) if isinstance(r["St/Pr"], str) else None,
                 "p": purposes(r["Purposes"]), "t": t if t in TYPES else None, "f": int(r.tier),
+                "ow": txt(r["Owner/Operator"]), "rn": txt(r["Reservoir Name"]),
+                "len": None if pd.isna(r["len"]) else int(round(r["len"])),
+                "el": None if pd.isna(r.el) else int(round(r.el)),
+                "ca": None if pd.isna(r.ca) else int(round(r.ca)),
             })
         return out
 
@@ -157,6 +167,47 @@ def main():
     dump(out / "countries.json", countries)
     rep["pays_jouables"] = len(countries)
     rep["pays_top"] = {c["en"]: c["n"] for c in countries[:8]}
+
+    # ---- mission cartographe : barrages sans coordonnées, assez documentés pour être localisés ----
+    miss = d[~d.geo_ok & ~d.generic & (d.h >= 8) & (d.River.notna() | d.City.notna() | d["St/Pr"].notna())].copy()
+    miss = with_fame(miss)
+    miss = miss[miss.groupby("ckey").cumcount() < 150].head(6000).reset_index(drop=True)
+    miss["tier"] = 2
+    miss["lat"], miss["lon"] = 0.0, 0.0
+    mrecs = records(miss)
+    for m in mrecs:
+        m.pop("la"); m.pop("lo"); m.pop("f")
+    dump(out / "missing.json", mrecs)
+    # emprise de chaque pays (tous barrages géolocalisés non suspects) : cadrage de la carte en mission cartographe
+    bounds = {}
+    for ck, g in d[d.geo_ok & ~d.isolated].groupby("ckey"):
+        bounds[ck] = [round(float(g.lat.min()), 2), round(float(g.lon.min()), 2), round(float(g.lat.max()), 2), round(float(g.lon.max()), 2)]
+    dump(out / "bounds.json", bounds)
+    rep["a_localiser_total"] = int((~d.geo_ok).sum())
+    rep["a_localiser_pool_mission"] = len(mrecs)
+
+    # ---- « le registre en chiffres » ----
+    pct = lambda ser: round(float(ser.notna().mean()) * 100, 1)
+    purp = d["Purposes"].dropna().astype(str).str.upper().str.findall(r"[A-Z]").explode()
+    fields = {"Hauteur": d.h, "Année": d.year, "Cours d'eau": d.River, "Type": d.Type, "Usages": d.Purposes,
+              "Volume du réservoir": d.vol, "Propriétaire": d["Owner/Operator"], "Altitude": d.el,
+              "Puissance (MW)": d.mw, "Coordonnées GPS": d.lat.where(d.geo_ok)}
+    dec = (d.year // 10 * 10).dropna().astype(int)
+    dec = dec[(dec >= 1800) & (dec <= 2020)].value_counts().sort_index()
+    tall = d.sort_values("h", ascending=False).head(10)
+    big = d.sort_values("vol", ascending=False).head(10)
+    stats = {
+        "total": int(len(d)), "geo": int(d.geo_ok.sum()), "pays": int(d.ckey.nunique()),
+        "completude": {k: pct(v) for k, v in fields.items()},
+        "usages": {c: int((purp == c).sum()) for c in PURPOSES},
+        "types": {k: int((d.Type.astype(str).str.split("/").str[0] == k).sum()) for k in TYPES},
+        "decennies": {int(k): int(v) for k, v in dec.items()},
+        "top_pays": [{"fr": n, "n": int(c)} for n, c in d["French Country Name"].value_counts().head(10).items()],
+        "top_pays_en": [{"en": n, "n": int(c)} for n, c in d["Country Name"].value_counts().head(10).items()],
+        "plus_hauts": [{"n": title(r["name"]), "c": r["French Country Name"], "ce": r["Country Name"], "h": int(r.h)} for _, r in tall.iterrows()],
+        "plus_gros": [{"n": title(r["name"]), "c": r["French Country Name"], "ce": r["Country Name"], "v": round(float(r.vol), 1)} for _, r in big.iterrows()],
+    }
+    dump(out / "stats.json", stats)
 
     (ROOT / "data").mkdir(exist_ok=True)
     (ROOT / "data" / "qa_report.json").write_text(json.dumps(rep, ensure_ascii=False, indent=2), encoding="utf-8")
