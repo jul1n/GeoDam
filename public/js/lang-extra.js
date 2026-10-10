@@ -1,7 +1,7 @@
 // Textes ajoutés pour : navigation, accueil « hero », indices, mission cartographe, profil, pages Explorer / Registre / Glossaire / À propos.
 export const EXTRA = {
   fr: {
-    "skip": "Aller au contenu", "safe.label": "Mode sécurisé", "safe.hint": "Activé : un bouton Valider confirme votre réponse. Désactivé : un clic sur la carte valide directement.", "map.hint1": "Un clic sur la carte valide votre réponse.", "hero.quick": "Ou essayez :",
+    "skip": "Aller au contenu", "safe.label": "Mode sécurisé", "safe.hint": "Activé : un bouton Valider confirme votre réponse. Désactivé : un clic sur la carte valide directement.", "map.hint1": "Un clic sur la carte valide votre réponse.", "map.next2": "Cliquez de nouveau sur la carte (au bout de 2 s) pour passer à la suite.", "hero.quick": "Ou essayez :",
     "nav.play": "Jouer", "nav.explore": "Explorer", "nav.register": "Le registre", "nav.glossary": "Glossaire", "nav.about": "À propos",
     "hero.kicker": "Le jeu des grands barrages", "hero.title": "Où est ce barrage ?",
     "hero.sub": "{n} barrages du registre mondial de la CIGB/ICOLD. Pas de photo : une carte, des indices et votre instinct d'ingénieur.",
@@ -81,7 +81,7 @@ export const EXTRA = {
     "foot.about": "À propos & mentions légales", "foot.src": "Code source",
   },
   en: {
-    "skip": "Skip to content", "safe.label": "Safe mode", "safe.hint": "On: a Confirm button validates your answer. Off: a click on the map validates it directly.", "map.hint1": "One click on the map validates your answer.", "hero.quick": "Or try:",
+    "skip": "Skip to content", "safe.label": "Safe mode", "safe.hint": "On: a Confirm button validates your answer. Off: a click on the map validates it directly.", "map.hint1": "One click on the map validates your answer.", "map.next2": "Click the map again (after 2 s) to move on.", "hero.quick": "Or try:",
     "nav.play": "Play", "nav.explore": "Explore", "nav.register": "The Register", "nav.glossary": "Glossary", "nav.about": "About",
     "hero.kicker": "The large dams game", "hero.title": "Where is this dam?",
     "hero.sub": "{n} dams from the ICOLD World Register. No photos: a map, clues and your engineer's instinct.",

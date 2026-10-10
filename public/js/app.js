@@ -195,7 +195,7 @@ function home() {
       || (() => { const m = countries.filter((c) => norm(c.fr).startsWith(q) || norm(c.en).startsWith(q)); return m.length === 1 ? m[0] : null; })();
     if (!hit) { $("#chint").className = "err small"; $("#chint").textContent = t("scope.err"); return; }
     $("#chint").textContent = t("scope.loading");
-    try { await setCountry(hit.iso); home(); } catch { $("#chint").className = "err small"; $("#chint").textContent = t("scope.err"); }
+    try { await setCountry(hit.iso); start("map"); } catch { $("#chint").className = "err small"; $("#chint").textContent = t("scope.err"); }
   };
   $("#cform").addEventListener("submit", (e) => { e.preventDefault(); pick(); });
   $("#cinput").addEventListener("input", (e) => { if (!e.inputType || e.inputType === "insertReplacementText") pick(); });
@@ -279,11 +279,14 @@ async function start(mode) {
 // ---------------------------------------------------------------- Mode 1 : carte muette (avec indices payants)
 function playMap({ token, seed }) {
   const { pool, info } = ctx, idx = S.pickMapRounds(pool, seed, info.distinct), guesses = [], recap = [];
-  let round = 0, total = 0, guess = null, layers = [], locked = false, hints = 0, shown = 0;
+  let round = 0, total = 0, guess = null, layers = [], locked = false, lockedAt = 0, hints = 0, shown = 0;
   app.innerHTML = `<div class="hud"><span id="rd"></span>${switchHtml()}<span id="sc"></span></div>
     <div class="game"><div id="side"></div><div><div id="map"></div><p class="muted small" id="kbd">${t("map.centerhint")}</p>
     <div class="row actions"><button id="ctr" class="ghost">${t("map.center")}</button><button id="ok" disabled>${t("map.validate")}</button><button id="next" class="accent" hidden></button></div></div></div><div id="end"></div>`;
-  const place = (lat, lng) => { if (locked) return; guess = [lat, lng]; layers.forEach((l) => l.remove()); layers = [pin(lat, lng, PIN_GUESS, "drop").addTo(map)]; $("#ok").disabled = false; if (!safeMode()) $("#ok").click(); };
+  const place = (lat, lng) => {
+    if (locked) { if (!safeMode() && Date.now() - lockedAt >= 2000) $("#next").click(); return; }   // 2e clic, 2 s après : manche suivante
+    guess = [lat, lng]; layers.forEach((l) => l.remove()); layers = [pin(lat, lng, PIN_GUESS, "drop").addTo(map)]; $("#ok").disabled = false; if (!safeMode()) $("#ok").click();
+  };
   makeMap(place);
   bindSafe(() => { $("#ok").hidden = locked || !safeMode(); side(); });
   $("#ctr").addEventListener("click", () => { const c = map.getCenter(); place(c.lat, S.wrapLng(c.lng)); });
@@ -303,12 +306,12 @@ function playMap({ token, seed }) {
   };
   $("#ok").addEventListener("click", () => {
     const d = pool[idx[round]], km = S.distanceKm(guess[0], guess[1], d.la, d.lo), base = S.mapPoints(km, info.scale), pts = Math.round(base * S.hintFactor(hints));
-    guesses.push([guess[0], guess[1], hints]); total += pts; locked = true; $("#ok").hidden = true; $("#ctr").hidden = true; side();
+    guesses.push([guess[0], guess[1], hints]); total += pts; locked = true; lockedAt = Date.now(); $("#ok").hidden = true; $("#ctr").hidden = true; side();
     recap.push({ n: d.n, km, pts, hints });
     layers.push(pin(d.la, d.lo, PIN_TRUTH, "pulse").addTo(map), L.polyline([guess, [d.la, d.lo]], { color: "#111a4c", dashArray: "6 6", weight: 2 }).addTo(map));
     map.fitBounds(L.latLngBounds([guess, [d.la, d.lo]]).pad(0.5), { maxZoom: 7 });
     $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">${reactFor(base)}</div><b>${esc(placeOf(d))}</b> — ${t("map.dist", { km: fmt(km) })}
-      <div class="pts-line">+<span id="rp">0</span>${hints ? ` <small>(−${hints * 10} %)</small>` : ""}</div>${factsHtml(d)}<button class="ghost" id="sheetbtn">${t("sheet.open")}</button></div>`);
+      <div class="pts-line">+<span id="rp">0</span>${hints ? ` <small>(−${hints * 10} %)</small>` : ""}</div>${factsHtml(d)}<button class="ghost" id="sheetbtn">${t("sheet.open")}</button>${safeMode() ? "" : `<p class="muted small">${t("map.next2")}</p>`}</div>`);
     countUp($("#rp"), pts, 700, fmt); $("#sheetbtn").addEventListener("click", () => openSheet(d));
     if (base >= 4800) confetti(80);
     $("#sc").textContent = t("map.score", { s: fmt(total) });
@@ -417,13 +420,16 @@ function playDaily({ token, seed }) {
 // ---------------------------------------------------------------- Mode 4 : mission cartographe
 function playMission({ token, seed }) {
   const rounds = S.pickMissionRounds(dams, missingPool, seed), guesses = [];
-  let round = 0, guess = null, layers = [], locked = false;
+  let round = 0, guess = null, layers = [], locked = false, lockedAt = 0;
   const dOf = (rd) => (rd.src === "k" ? dams[rd.i] : missingPool[rd.i]);
   app.innerHTML = `<div class="hud"><span id="rd"></span>${switchHtml()}<span class="pill part">🛰️ ${t("mission.title")}</span></div>
     <div class="notice">${t("mission.blind")}</div>
     <div class="game"><div id="side"></div><div><div id="map"></div><p class="muted small">${t("map.centerhint")}</p>
     <div class="row actions"><button id="ctr" class="ghost">${t("map.center")}</button><button id="ok" disabled>${t("map.validate")}</button><button id="next" class="accent" hidden></button></div></div></div><div id="end"></div>`;
-  const place = (lat, lng) => { if (locked) return; guess = [lat, lng]; layers.forEach((l) => l.remove()); layers = [pin(lat, lng, PIN_GUESS, "drop").addTo(map)]; $("#ok").disabled = false; if (!safeMode()) $("#ok").click(); };
+  const place = (lat, lng) => {
+    if (locked) { if (!safeMode() && Date.now() - lockedAt >= 2000) $("#next").click(); return; }
+    guess = [lat, lng]; layers.forEach((l) => l.remove()); layers = [pin(lat, lng, PIN_GUESS, "drop").addTo(map)]; $("#ok").disabled = false; if (!safeMode()) $("#ok").click();
+  };
   makeMap(place, null);
   bindSafe(() => { $("#ok").hidden = locked || !safeMode(); });
   $("#ctr").addEventListener("click", () => { const c = map.getCenter(); place(c.lat, S.wrapLng(c.lng)); });
@@ -435,14 +441,14 @@ function playMission({ token, seed }) {
     $("#ok").hidden = !safeMode(); $("#ok").disabled = true; $("#ctr").hidden = false; $("#next").hidden = true;
   };
   $("#ok").addEventListener("click", () => {
-    const rd = rounds[round], d = dOf(rd); guesses.push(guess); locked = true; $("#ok").hidden = true; $("#ctr").hidden = true;
+    const rd = rounds[round], d = dOf(rd); guesses.push(guess); locked = true; lockedAt = Date.now(); $("#ok").hidden = true; $("#ctr").hidden = true;
     if (rd.src === "k") {
       const km = S.distanceKm(guess[0], guess[1], d.la, d.lo), pts = S.mapPoints(km);
       layers.push(pin(d.la, d.lo, PIN_TRUTH, "pulse").addTo(map), L.polyline([guess, [d.la, d.lo]], { color: "#111a4c", dashArray: "6 6", weight: 2 }).addTo(map));
       map.fitBounds(L.latLngBounds([guess, [d.la, d.lo]]).pad(0.5), { maxZoom: 7 });
       $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">${reactFor(pts)}</div>${t("map.dist", { km: fmt(km) })} → <span class="pts">+${fmt(pts)}</span></div>`);
     } else {
-      $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">🛰️</div><b>${t("mission.thanks")}</b><br><span class="pts">${t("mission.bonus", { n: S.MISSION_BONUS })}</span></div>`);
+      $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">🛰️</div><b>${t("mission.thanks")}</b><br><span class="pts">${t("mission.bonus", { n: S.MISSION_BONUS })}</span>${safeMode() ? "" : `<p class="muted small">${t("map.next2")}</p>`}</div>`);
     }
     $("#next").hidden = false; $("#next").textContent = round === rounds.length - 1 ? t("map.last") : t("map.next"); $("#next").focus();
   });
