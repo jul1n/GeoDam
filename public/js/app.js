@@ -268,26 +268,30 @@ function home() {
   lbLevel = cur;
   const art = isW ? heroSvg() : `<div class="hero-art flagart" aria-hidden="true">${isCt ? '<span class="globe">🧭</span>' : flag({ iso: ctx.iso }, "xl")}</div>`;
   app.innerHTML = `
-    <section class="hero"><div class="hero-in"><div class="hero-txt">
+    <section class="hero landing-hero"><div class="hero-in"><div class="hero-txt">
       <p class="kicker">${isW ? t("hero.kicker") : t("hero.kicker.scope")}</p>
       <h1>${isW ? t("hero.title") : t("hero.title.scope", { c: esc(ctx.name) })}</h1>
       <p class="hero-sub">${isW ? t("hero.sub", { n: fmt(total) }) : t("hero.sub.scope", { n: fmt(ctx.pool.length) })}</p>
       <div class="row"><button class="cta-main" data-mode="map">▶ ${t("hero.cta")}</button></div>
+      <p class="landing-note">${tr("Observez les indices. Placez le barrage sur la carte.", "Read the clues. Place the dam on the map.")}</p>
+      <details class="play-options"><summary>${tr("Personnaliser ma partie", "Customize my game")}</summary>
       <div class="levels" role="radiogroup" aria-label="${esc(t("diff.title"))}">${S.LEVELS.map((l) => `<button type="button" class="lvlpill${cur === l ? " on" : ""}" role="radio" aria-checked="${cur === l}" data-level="${l}"${levelOk(l) ? "" : " disabled"}><b>${DIFF_ICON[l]} ${t("diff." + l)}</b><small>${t("diff." + l + ".d")}</small></button>`).join("")}</div>
-      <div class="tiles">${modes.filter((m) => m !== "map").map((m) => `<button class="tile" data-mode="${m}"><span class="ti" aria-hidden="true">${ICON[m]}</span><span><b>${t("mode." + m)}</b><small>${t("tile." + m)}</small></span></button>`).join("")}</div>
       <form class="zonepill" id="cform" autocomplete="off"><span aria-hidden="true">📍</span><label class="sr" for="cinput">${t("scope.title")}</label>
         <input type="text" id="cinput" list="clist" placeholder="${esc(t("zone.ph"))}" autocapitalize="none" spellcheck="false">
         <datalist id="clist">${list.map((c) => `<option value="${esc(cname(c))}">${fmt(c.n)}</option>`).join("")}</datalist>
         ${isW ? "" : `<button type="button" class="ghost" id="cworld">${t("scope.back")}</button>`}</form>
       <p class="small hint" id="chint" role="status"></p>
-      ${isW ? `<ul class="chips"><li><b>${fmt(dams.length)}</b> ${t("hero.s1")}</li><li><b>${countries.length}</b> ${t("hero.s2")}</li><li><b>${fmt(total - geo)}</b> ${t("hero.s3")}</li></ul>` : ""}
+      </details>
+      <div class="tiles">${modes.filter((m) => m !== "map").map((m) => `<button class="tile" data-mode="${m}"><span class="ti" aria-hidden="true">${ICON[m]}</span><span><b>${t("mode." + m)}</b><small>${t("tile." + m)}</small></span></button>`).join("")}</div>
+      ${isW ? `<ul class="chips"><li><b>${fmt(dams.length)}</b> ${t("hero.s1")}</li><li><b>${countries.length}</b> ${t("hero.s2")}</li></ul>` : ""}
     </div>${art}</div></section>
-    ${profileCard()}
+    <details class="landing-section profile-details"><summary>${tr("Ma progression et mes outils", "My progress and tools")}</summary>${profileCard()}</details>
+    <details class="landing-section leaderboard-details"><summary>${tr("Les classements", "Leaderboards")}</summary>
     ${isW ? '<div id="mprog" class="panel"></div>' : ""}
     <h2 class="sec">${isW ? t("lb.title") : t("lb.for", { c: esc(ctx.name) })}</h2>
     <div class="tabs" role="tablist">${modes.map((m, i) => `<button class="tab" role="tab" data-lb="${m}" aria-selected="${i === 0}">${ICON[m]} ${t("mode." + m)}</button>`).join("")}</div>
     <div class="tabs lvltabs" id="lvltabs" role="tablist">${S.LEVELS.map((l) => `<button class="tab" role="tab" data-lvtab="${l}" aria-selected="${cur === l}">${DIFF_ICON[l]} ${t("diff." + l)}</button>`).join("")}</div>
-    <div class="panel" id="lb">${t("lb.loading")}</div>`;
+    <div class="panel" id="lb">${t("lb.loading")}</div></details>`;
   app.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => start(b.dataset.mode)));
   app.querySelectorAll("[data-lb]").forEach((b) => b.addEventListener("click", () => {
     app.querySelectorAll("[data-lb]").forEach((x) => x.setAttribute("aria-selected", x === b));

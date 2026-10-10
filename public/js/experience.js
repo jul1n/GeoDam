@@ -62,6 +62,11 @@ export function homeExtras(app,{start,resume,selectScope,dams,api}){
     '<p class="muted">'+tr("Profil local : exportez-le avant de changer d’appareil.","Local profile: export it before switching devices.")+'</p><div class="row"><button class="ghost" data-action="export">'+tr("Exporter mon profil","Export my profile")+'</button><label class="file-button">'+tr("Importer un profil","Import a profile")+'<input type="file" accept="application/json,.json"></label><button class="ghost" data-action="status">'+tr("Suivre mes contributions","Track my contributions")+'</button></div><div class="contribution-status" role="status"></div>'+
     '<p class="muted small">'+tr("Classements ludiques : les données publiques ne permettent pas de garantir l’absence de bots.","Casual leaderboards: public data cannot guarantee the absence of bots.")+'</p>';
   app.querySelector(".profile")?.after(el);
+  const intro=document.createElement("section");intro.className="landing-intro";
+  intro.innerHTML='<h2>'+tr("Une carte. Des indices. À vous de jouer.","A map. A few clues. Your turn.")+'</h2><p>'+tr("Découvrez les barrages du monde et testez votre sens de la géographie, une manche après l’autre.","Discover the world’s dams and test your geography skills, one round at a time.")+'</p><button class="ghost" data-intro-tutorial>'+tr("Comment jouer ? · Essayer une manche","How to play · Try one round")+'</button>';
+  app.querySelector(".hero")?.after(intro);
+  intro.querySelector("button").onclick=()=>start("map",{practice:true,tutorial:true});
+  if(g){const saved=el.querySelector('[data-action="resume"]');const row=saved?.closest('.row');if(row)intro.append(row);}
   el.addEventListener("click",async e=>{
     const action=e.target.closest("[data-action]")?.dataset.action;
     if(action==="tutorial")start("map",{practice:true,tutorial:true});
