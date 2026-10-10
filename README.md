@@ -8,7 +8,9 @@ Classement sans compte : un bon score donne le droit d'inscrire un pseudo ; l'IP
 
 | Couche | Techno |
 |---|---|
-| Front | HTML + JS ES modules (aucun build), Leaflet 1.9.4, fonds Esri |
+| Front | HTML + JS ES modules (aucun build), Leaflet 1.9.4, fonds Esri ; responsive mobile ; thème clair aux couleurs CIGB/ICOLD |
+| App installable | PWA : `manifest.webmanifest`, `sw.js` (coque hors ligne), icônes générées par `scripts/make_icons.py` |
+| Langues | FR / EN (`public/js/i18n.js`, détection auto + sélecteur) ; les erreurs de l'API sont des codes traduits côté client |
 | API + classement | Cloudflare Workers (`src/worker.js`) |
 | Base | Cloudflare D1 (SQLite) — table `scores` (`schema.sql`) |
 | Données | Python/pandas (`scripts/build_data.py`) → `public/data/dams.json` |
@@ -26,6 +28,8 @@ Limite connue : le jeu de données est public, donc un joueur motivé peut écri
 
 ## Données
 
+Les champs pays / usages / types sont stockés en codes ou en double langue (`c` FR, `ce` EN) et traduits à l'affichage.
+
 `python -I scripts/build_data.py chemin/vers/world_register_dams_2025.xlsx`
 
 - 42 095 barrages géolocalisés sur 62 362 ; coordonnées à ~6 décimales, aucune hors plage.
@@ -41,6 +45,7 @@ npm install
 cp .dev.vars.example .dev.vars        # puis changez SECRET
 npm run db:local
 npm run dev                           # http://127.0.0.1:8787
+npm run db:reset-local                # (re)vide les scores de test
 node test/e2e.mjs                     # tests bout en bout (≈ 30 s)
 ```
 
@@ -56,5 +61,5 @@ npm run deploy
 
 ## RGPD
 
-L'IP est une donnée personnelle. Le pied de page informe le joueur. Pour limiter le risque : `IP_MODE="hash"` dans `wrangler.jsonc`
+L'IP est une donnée personnelle. Le joueur en est informé au moment précis où il saisit son pseudo (encadré avant le champ, FR/EN). Pour limiter le risque : `IP_MODE="hash"` dans `wrangler.jsonc`
 (HMAC de l'IP, l'anti-abus continue de fonctionner) et purge périodique (`DELETE FROM scores WHERE created_at < datetime('now','-90 days')` sur `ip`).

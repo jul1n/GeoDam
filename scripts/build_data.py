@@ -94,10 +94,10 @@ def main():
     p = p[p.groupby("iso").cumcount() < 700].head(9000).reset_index(drop=True)
     p["tier"] = np.where(p.index < 2500, 3, 2)  # 3 = célèbre (barrage du jour, mode facile)
 
-    def purposes(v):
+    def purposes(v):  # codes ICOLD, traduits côté front (FR/EN)
         if not isinstance(v, str):
             return []
-        return [PURPOSES[c] for c in re.split(r"[^A-Z]", v.upper()) if c in PURPOSES][:3]
+        return [c for c in re.split(r"[^A-Z]", v.upper()) if c in PURPOSES][:3]
 
     def title(s):
         return s.title() if s else s
@@ -111,7 +111,8 @@ def main():
         dams.append({
             "id": str(r["Dam Code"]),
             "n": title(r["name"]),
-            "c": r["French Country Name"],
+            "c": str(r["French Country Name"]).strip(),
+            "ce": str(r["Country Name"]).strip(),
             "iso": r["iso"],
             "ct": r["Continent"],
             "la": round(float(r.lat), 4),
@@ -123,7 +124,7 @@ def main():
             "r": title(r["River"]) if isinstance(r["River"], str) else None,
             "ci": title(r["City"]) if isinstance(r["City"], str) else None,
             "p": purposes(r["Purposes"]),
-            "t": TYPES.get(t),
+            "t": t if t in TYPES else None,
             "f": int(r.tier),
         })
     out = ROOT / "public" / "data"

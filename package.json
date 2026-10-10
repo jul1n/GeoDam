@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "db:local": "wrangler d1 execute geodam --local --file=schema.sql",
+    "db:reset-local": "wrangler d1 execute geodam --local --command \"DELETE FROM scores\"",
     "db:remote": "wrangler d1 execute geodam --remote --file=schema.sql",
     "deploy": "wrangler deploy",
     "test": "node test/e2e.mjs"

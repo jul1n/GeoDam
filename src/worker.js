@@ -10,7 +10,7 @@ const SUBMITS_PER_HOUR = 10;
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
-const fail = (msg, status = 400) => json({ error: msg }, status);
+const fail = (code, status = 400) => json({ error: code }, status); // codes traduits côté client (i18n.js)
 
 // ---------- signature HMAC (sessions et "claims" infalsifiables) ----------
 const enc = new TextEncoder();
@@ -44,7 +44,7 @@ const periodFor = (mode, sess) => (mode === "daily" ? sess.seed : "all");
 // ---------- routes ----------
 async function startSession(request, env) {
   const { mode } = await request.json().catch(() => ({}));
-  if (!MODES.includes(mode)) return fail("mode inconnu");
+  if (!MODES.includes(mode)) return fail("bad_mode");
   const seed = mode === "daily" ? today() : crypto.randomUUID().slice(0, 8);
   const sess = { m: mode, seed, t: Date.now(), id: crypto.randomUUID() };
   return json({ token: await sign(env, sess), seed, mode });
@@ -53,18 +53,18 @@ async function startSession(request, env) {
 async function finish(request, env) {
   const body = await request.json().catch(() => ({}));
   const sess = await verify(env, body.token);
-  if (!sess || sess.k) return fail("session invalide", 401);
+  if (!sess || sess.k) return fail("invalid_session", 401);
   const age = Date.now() - sess.t;
-  if (age > SESSION_TTL) return fail("session expirée", 410);
+  if (age > SESSION_TTL) return fail("expired", 410);
 
   let res;
   if (sess.m === "map") res = mapScore(dams, sess.seed, body.guesses);
   else if (sess.m === "hilo") res = hiloScore(dams, sess.seed, body.answers);
   else if (sess.m === "daily") res = dailyScore(dams, sess.seed, body.guesses);
-  if (!res) return fail("partie invalide");
+  if (!res) return fail("invalid_game");
 
   const units = sess.m === "map" ? 1 : sess.m === "daily" ? body.guesses.length : body.answers.length;
-  if (age < MIN_MS[sess.m] * units) return fail("partie trop rapide", 422);
+  if (age < MIN_MS[sess.m] * units) return fail("too_fast", 422);
 
   const period = periodFor(sess.m, sess);
   const { results } = await env.DB.prepare(
@@ -77,30 +77,30 @@ async function finish(request, env) {
 async function submit(request, env) {
   const body = await request.json().catch(() => ({}));
   const c = await verify(env, body.claim);
-  if (!c || !c.k) return fail("claim invalide", 401);
-  if (Date.now() - c.t > 15 * 60 * 1000) return fail("claim expiré", 410);
+  if (!c || !c.k) return fail("invalid_claim", 401);
+  if (Date.now() - c.t > 15 * 60 * 1000) return fail("claim_expired", 410);
   const name = String(body.name ?? "").trim().replace(/\s+/g, " ");
-  if (!NAME_RE.test(name)) return fail("Pseudo : 2 à 16 caractères (lettres, chiffres, espace, _ . -)");
+  if (!NAME_RE.test(name)) return fail("bad_name");
 
   const ip = await playerIp(request, env);
   const { results: recent } = await env.DB.prepare(
     "SELECT COUNT(*) AS n FROM scores WHERE ip=?1 AND created_at > datetime('now','-1 hour')").bind(ip).all();
-  if (recent[0].n >= SUBMITS_PER_HOUR) return fail("trop de scores enregistrés, réessayez plus tard", 429);
+  if (recent[0].n >= SUBMITS_PER_HOUR) return fail("rate", 429);
   if (c.m === "daily") {
     const { results: dup } = await env.DB.prepare("SELECT 1 FROM scores WHERE mode='daily' AND period=?1 AND ip=?2").bind(c.p, ip).all();
-    if (dup.length) return fail("Un score du jour est déjà enregistré depuis cette connexion", 409);
+    if (dup.length) return fail("dup_daily", 409);
   }
   try {
     await env.DB.prepare(
       "INSERT INTO scores (sid,mode,period,name,score,ip,country,ua) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)")
       .bind(c.id, c.m, c.p, name, c.s, ip, request.cf?.country ?? null, (request.headers.get("User-Agent") || "").slice(0, 200)).run();
-  } catch { return fail("score déjà enregistré", 409); }
+  } catch { return fail("dup", 409); }
   return json({ ok: true });
 }
 
 async function leaderboard(url, env) {
   const mode = url.searchParams.get("mode");
-  if (!MODES.includes(mode)) return fail("mode inconnu");
+  if (!MODES.includes(mode)) return fail("bad_mode");
   const period = mode === "daily" ? (url.searchParams.get("period") || today()) : "all";
   const { results } = await env.DB.prepare(
     "SELECT name, score, country, created_at FROM scores WHERE mode=?1 AND period=?2 AND hidden=0 ORDER BY score DESC, id ASC LIMIT 20")
@@ -111,13 +111,13 @@ async function leaderboard(url, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (!env.SECRET) return fail("SECRET manquant côté serveur", 500);
+    if (!env.SECRET) return fail("server", 500);
     try {
       if (url.pathname === "/api/session" && request.method === "POST") return await startSession(request, env);
       if (url.pathname === "/api/finish" && request.method === "POST") return await finish(request, env);
       if (url.pathname === "/api/submit" && request.method === "POST") return await submit(request, env);
       if (url.pathname === "/api/leaderboard" && request.method === "GET") return await leaderboard(url, env);
-    } catch (e) { return fail("erreur serveur", 500); }
-    return fail("introuvable", 404);
+    } catch (e) { return fail("server", 500); }
+    return fail("not_found", 404);
   },
 };

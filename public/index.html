@@ -2,25 +2,35 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GéoDam — Devine où est le barrage</title>
-  <meta name="description" content="Place des barrages sur la carte du monde, compare-les et trouve le barrage du jour.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230f2a43'/%3E%3Cpath d='M6 8h20l-3 18H9z' fill='%2338bdf8'/%3E%3C/svg%3E">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GéoDam</title>
+  <meta name="description" content="">
+  <meta name="theme-color" content="#111a4c">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" href="/icons/favicon-64.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GéoDam">
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <header class="top">
-    <a href="/" class="logo" id="logo">Géo<b>Dam</b></a>
-    <nav><button id="btn-home" class="ghost" hidden>← Accueil</button></nav>
+    <div class="top-in">
+      <a href="/" class="logo" id="logo">Géo<b>Dam</b></a>
+      <nav>
+        <button id="btn-install" class="ghost" hidden data-i18n="nav.install"></button>
+        <div id="lang" class="lang" role="group" aria-label="Language" hidden>
+          <button data-l="fr" class="ghost">FR</button><button data-l="en" class="ghost">EN</button>
+        </div>
+        <button id="btn-home" class="ghost" hidden data-i18n="nav.home"></button>
+      </nav>
+    </div>
   </header>
   <main id="app" aria-live="polite"></main>
-  <footer>
-    <p>Données : <abbr title="Commission internationale des grands barrages">CIGB/ICOLD</abbr> — Registre mondial des barrages 2025.
-      Fonds de carte et imagerie © Esri.</p>
-    <p>Confidentialité : lorsque vous inscrivez un score au classement, votre pseudo, votre score, votre pays et votre adresse IP
-      sont enregistrés (lutte contre la triche et les abus). Rien n'est enregistré si vous ne publiez pas de score.</p>
-  </footer>
+  <footer><p data-i18n="foot.data"></p></footer>
   <script src="/vendor/leaflet/leaflet.js"></script>
   <script type="module" src="/js/app.js"></script>
 </body>
