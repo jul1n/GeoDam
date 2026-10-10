@@ -181,7 +181,8 @@ def main():
     # emprise de chaque pays (tous barrages géolocalisés non suspects) : cadrage de la carte en mission cartographe
     bounds = {}
     for ck, g in d[d.geo_ok & ~d.isolated].groupby("ckey"):
-        bounds[ck] = [round(float(g.lat.min()), 2), round(float(g.lon.min()), 2), round(float(g.lat.max()), 2), round(float(g.lon.max()), 2)]
+        lo_q, hi_q = (0.01, 0.99) if len(g) >= 100 else (0, 1)   # ignore l'outre-mer / les points excentrés
+        bounds[ck] = [round(float(g.lat.quantile(lo_q)), 2), round(float(g.lon.quantile(lo_q)), 2), round(float(g.lat.quantile(hi_q)), 2), round(float(g.lon.quantile(hi_q)), 2)]
     dump(out / "bounds.json", bounds)
     rep["a_localiser_total"] = int((~d.geo_ok).sum())
     rep["a_localiser_pool_mission"] = len(mrecs)

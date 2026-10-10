@@ -25,7 +25,7 @@ const inWorld = () => ctx.scope === "world";
 const norm = (x) => String(x).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const cname = (c) => (getLang() === "fr" ? c.fr : c.en);
 const placeOf = (d) => (inWorld() ? countryOf(d) : d.s || d.ci || countryOf(d));
-const bboxOf = (pool) => L.latLngBounds(pool.map((d) => [d.la, d.lo]));
+const bboxOf = (pool) => { const [s, w, n, e] = S.robustBox(pool); return L.latLngBounds([[s, w], [n, e]]).pad(0.03); };
 function setWorld() { ctx = { scope: "world", pool: dams, info: S.WORLD, name: t("scope.world"), bounds: null }; }
 async function loadCountry(iso) {
   if (!poolCache.has(iso)) {
@@ -50,10 +50,10 @@ setResolver(async (scope) => {
 
 // ---------------------------------------------------------------- carte
 function destroyMap() { if (map) { map.remove(); map = null; } }
-function frame(b) { if (b) map.fitBounds(b, { maxZoom: 9, padding: [20, 20] }); else map.setView([25, 10], 2); }
+function frame(b) { if (b) map.fitBounds(b, { maxZoom: 9, padding: [8, 8] }); else map.setView([25, 10], 2); }
 function makeMap(onClick, view = ctx.bounds) {
   destroyMap();
-  map = L.map("map", { worldCopyJump: true, minZoom: 2, maxBounds: [[-85, -540], [85, 540]], keyboard: true });
+  map = L.map("map", { worldCopyJump: true, minZoom: 2, maxBounds: [[-85, -540], [85, 540]], keyboard: true, zoomSnap: 0.25, zoomDelta: 0.5 });
   frame(view);
   const relief = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}",
     { maxZoom: 12, maxNativeZoom: 8, attribution: "© Esri" }).addTo(map);
@@ -64,12 +64,17 @@ function makeMap(onClick, view = ctx.bounds) {
 }
 const pin = (lat, lng, color, cls = "") =>
   L.marker([lat, lng], { icon: L.divIcon({ className: "", html: `<div class="dam-pin ${cls}" style="background:${color}"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] }) });
-const boundsOfIso = (iso) => { const b = bounds[iso]; return b ? L.latLngBounds([[b[0], b[1]], [b[2], b[3]]]).pad(0.15) : null; };
+const boundsOfIso = (iso) => { const b = bounds[iso]; return b ? L.latLngBounds([[b[0], b[1]], [b[2], b[3]]]).pad(0.05) : null; };
+// Par défaut, un clic sur la carte valide la réponse. Le « mode sécurisé » rétablit le bouton Valider (stocké dans le navigateur).
+const safeMode = () => store.get("geodam-safe") === "1";
+const switchHtml = () => `<label class="switch" title="${esc(t("safe.hint"))}"><input type="checkbox" id="safe" ${safeMode() ? "checked" : ""}><span class="slider" aria-hidden="true"></span><span>${t("safe.label")}</span></label>`;
+const bindSafe = (onChange) => $("#safe").addEventListener("change", (e) => { store.set("geodam-safe", e.target.checked ? "1" : "0"); onChange(); });
+const hintTxt = () => (safeMode() ? t("map.hint") : t("map.hint1"));
 const reactFor = (pts) => t("react." + (pts >= 4800 ? 5 : pts >= 4000 ? 4 : pts >= 2500 ? 3 : pts >= 1200 ? 2 : pts >= 400 ? 1 : 0));
 
 // ---------------------------------------------------------------- indices (3 niveaux payants en carte muette)
 function clueRows(d, level, full = false) {
-  const km = (v, u) => (v != null && v !== "" ? `${fmt(v)} ${u}` : null);
+  const km = (v, u) => (v != null && v !== "" && v !== 0 ? `${fmt(v)} ${u}` : null);
   const L = [
     [[t("clue.height"), km(d.h, "m")], [t("clue.year"), d.y], [t("clue.type"), typeLabel(d)], [t("clue.volume"), km(d.v, "hm³")], [t("clue.use"), uses(d).join(", ")]],
     [inWorld() || full ? [t("clue.continent"), contLabel(d)] : null, [t("clue.river"), d.r], [t("clue.elev"), d.el != null ? km(d.el, "m") : null]],
@@ -150,6 +155,9 @@ function profileCard() {
     <div class="badges" role="list">${Object.entries(P.BADGES).map(([k, icon]) => `<span role="listitem" class="badge ${p.badges.includes(k) ? "on" : ""}" title="${esc(t("bd." + k))} — ${esc(t("bd." + k + ".d"))}"><i aria-hidden="true">${icon}</i><span class="sr">${esc(t("bd." + k))}</span></span>`).join("")}</div></section>`;
 }
 
+const quickHtml = (modes) => `<div class="row"><button class="cta-main" data-mode="map">▶ ${t("hero.cta")}</button></div>
+  <div class="quick" role="group" aria-label="${esc(t("home.play"))}"><span class="muted">${t("hero.quick")}</span>${modes.filter((m) => m !== "map").map((m) => `<button class="cta-sec" data-mode="${m}">${ICON[m]} ${t("mode." + m)}</button>`).join("")}</div>`;
+
 function home() {
   inGame = false; setNav("");
   if (inWorld()) setWorld(); else ctx.name = cname(countries.find((c) => c.iso === ctx.iso));
@@ -159,9 +167,9 @@ function home() {
   app.innerHTML = `
     ${inWorld() ? `<section class="hero"><div class="hero-in"><div class="hero-txt"><p class="kicker">${t("hero.kicker")}</p><h1>${t("hero.title")}</h1>
         <p class="hero-sub">${t("hero.sub", { n: fmt(total) })}</p>
-        <div class="row"><button class="cta-main" id="hplay">${t("hero.cta")}</button><button class="cta-sec" id="hmission">${t("hero.cta2")}</button></div>
+        ${quickHtml(modes)}
         <ul class="chips"><li><b>${fmt(dams.length)}</b> ${t("hero.s1")}</li><li><b>${countries.length}</b> ${t("hero.s2")}</li><li><b>${fmt(total - geo)}</b> ${t("hero.s3")}</li></ul></div>${heroSvg()}</div></section>`
-      : `<h1 class="country-h">${t("scope.h1", { c: esc(ctx.name) })}</h1><p class="lead">${t("scope.lead", { c: esc(ctx.name) })}</p>`}
+      : `<h1 class="country-h">${t("scope.h1", { c: esc(ctx.name) })}</h1><p class="lead">${t("scope.lead", { c: esc(ctx.name) })}</p>${quickHtml(modes)}`}
     <div class="grid2"><div>
       <div class="panel scope"><label for="cinput"><b>${t("scope.title")}</b> : ${inWorld() ? t("scope.world") : esc(ctx.name)} <span class="muted">(${t("scope.count", { n: fmt(ctx.pool.length) })})</span></label>
         <form class="row" id="cform" autocomplete="off">
@@ -177,8 +185,6 @@ function home() {
     <div class="tabs" role="tablist">${modes.map((m, i) => `<button class="tab" role="tab" data-lb="${m}" aria-selected="${i === 0}">${ICON[m]} ${t("mode." + m)}</button>`).join("")}</div>
     <div class="panel" id="lb">${t("lb.loading")}</div>`;
   app.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => start(b.dataset.mode)));
-  $("#hplay")?.addEventListener("click", () => $("#modes").scrollIntoView({ behavior: "smooth" }));
-  $("#hmission")?.addEventListener("click", () => start("mission"));
   app.querySelectorAll("[data-lb]").forEach((b) => b.addEventListener("click", () => {
     app.querySelectorAll("[data-lb]").forEach((x) => x.setAttribute("aria-selected", x === b));
     showLeaderboard(b.dataset.lb, $("#lb"));
@@ -274,17 +280,18 @@ async function start(mode) {
 function playMap({ token, seed }) {
   const { pool, info } = ctx, idx = S.pickMapRounds(pool, seed, info.distinct), guesses = [], recap = [];
   let round = 0, total = 0, guess = null, layers = [], locked = false, hints = 0, shown = 0;
-  app.innerHTML = `<div class="hud"><span id="rd"></span><span id="sc"></span></div>
+  app.innerHTML = `<div class="hud"><span id="rd"></span>${switchHtml()}<span id="sc"></span></div>
     <div class="game"><div id="side"></div><div><div id="map"></div><p class="muted small" id="kbd">${t("map.centerhint")}</p>
     <div class="row actions"><button id="ctr" class="ghost">${t("map.center")}</button><button id="ok" disabled>${t("map.validate")}</button><button id="next" class="accent" hidden></button></div></div></div><div id="end"></div>`;
-  const place = (lat, lng) => { if (locked) return; guess = [lat, lng]; layers.forEach((l) => l.remove()); layers = [pin(lat, lng, PIN_GUESS, "drop").addTo(map)]; $("#ok").disabled = false; };
+  const place = (lat, lng) => { if (locked) return; guess = [lat, lng]; layers.forEach((l) => l.remove()); layers = [pin(lat, lng, PIN_GUESS, "drop").addTo(map)]; $("#ok").disabled = false; if (!safeMode()) $("#ok").click(); };
   makeMap(place);
+  bindSafe(() => { $("#ok").hidden = locked || !safeMode(); side(); });
   $("#ctr").addEventListener("click", () => { const c = map.getCenter(); place(c.lat, S.wrapLng(c.lng)); });
   const side = () => {
     const d = pool[idx[round]];
     $("#side").innerHTML = clueCard(d, hints, shown) +
       `<div class="hintbar"><button class="ghost" id="hint" ${hints >= S.MAX_HINTS || locked ? "disabled" : ""}>${hints >= S.MAX_HINTS ? t("hint.none") : t("hint.btn")}</button>
-       <small class="muted">${hints ? t("hint.used", { n: hints, p: hints * 10 }) : t("hint.left", { n: S.MAX_HINTS })}</small></div><p class="muted small">${t("map.hint")}</p>`;
+       <small class="muted">${hints ? t("hint.used", { n: hints, p: hints * 10 }) : t("hint.left", { n: S.MAX_HINTS })}</small></div><p class="muted small">${hintTxt()}</p>`;
     shown = hints;
     $("#hint").addEventListener("click", () => { hints++; side(); });
   };
@@ -292,7 +299,7 @@ function playMap({ token, seed }) {
     guess = null; locked = false; hints = 0; shown = -1;
     layers.forEach((l) => l.remove()); layers = []; frame(ctx.bounds);
     $("#rd").textContent = t("map.round", { n: round + 1, t: S.MAP_ROUNDS }); $("#sc").textContent = t("map.score", { s: fmt(total) });
-    side(); $("#ok").hidden = false; $("#ok").disabled = true; $("#ctr").hidden = false; $("#next").hidden = true;
+    side(); $("#ok").hidden = !safeMode(); $("#ok").disabled = true; $("#ctr").hidden = false; $("#next").hidden = true;
   };
   $("#ok").addEventListener("click", () => {
     const d = pool[idx[round]], km = S.distanceKm(guess[0], guess[1], d.la, d.lo), base = S.mapPoints(km, info.scale), pts = Math.round(base * S.hintFactor(hints));
@@ -373,7 +380,7 @@ function playDaily({ token, seed }) {
     (d) => [d.ow && `${t("clue.owner")} : ${d.ow}`, d.el != null && `${t("clue.elev")} : ${m(d.el, "m")}`, d.len && `${t("clue.length")} : ${m(d.len, "m")}`].filter(Boolean).join(" · "),
     (d) => [inWorld() ? t("clue.d4", { c: countryOf(d) }) : d.s && t("clue.d4p", { s: d.s }), t("clue.d5", { i: `${d.n[0]}${"·".repeat(Math.max(0, d.n.length - 1))}` }) + (d.ci ? t("clue.d6", { c: d.ci }) : "")].filter(Boolean).join(" · "),
   ];
-  app.innerHTML = `<div class="hud"><span>${t("daily.title", { d: esc(seed) })}${inWorld() ? "" : " — " + esc(ctx.name)}</span><span id="tries"></span></div>
+  app.innerHTML = `<div class="hud"><span>${t("daily.title", { d: esc(seed) })}${inWorld() ? "" : " — " + esc(ctx.name)}</span>${switchHtml()}<span id="tries"></span></div>
     <div class="game"><div><div class="panel"><h3>${t("daily.clues")}</h3><ol id="clues" class="cluelist"></ol></div>
     <div class="panel" style="margin-top:12px"><h3>${t("daily.attempts")}</h3><ul class="attempts" id="att"></ul></div></div>
     <div><div id="map"></div><p class="muted small">${t("map.centerhint")}</p><div class="row actions"><button id="ctr" class="ghost">${t("map.center")}</button><button id="ok" disabled>${t("daily.ok")}</button></div></div></div><div id="end"></div>`;
@@ -383,8 +390,9 @@ function playDaily({ token, seed }) {
     $("#clues").innerHTML = rows.map((c, i) => `<li${i === rows.length - 1 && guesses.length ? ' class="new"' : ""}>${esc(c)}</li>`).join("");
     $("#tries").textContent = t("daily.try", { n: Math.min(guesses.length + 1, S.DAILY_TRIES), t: S.DAILY_TRIES });
   };
-  const place = (lat, lng) => { if (over) return; guess = [lat, lng]; if (cur) cur.remove(); cur = pin(lat, lng, PIN_GUESS, "drop").addTo(map); $("#ok").disabled = false; };
+  const place = (lat, lng) => { if (over) return; guess = [lat, lng]; if (cur) cur.remove(); cur = pin(lat, lng, PIN_GUESS, "drop").addTo(map); $("#ok").disabled = false; if (!safeMode()) $("#ok").click(); };
   makeMap(place);
+  $("#ok").hidden = !safeMode(); bindSafe(() => { $("#ok").hidden = over || !safeMode(); });
   $("#ctr").addEventListener("click", () => { const c = map.getCenter(); place(c.lat, S.wrapLng(c.lng)); });
   $("#ok").addEventListener("click", () => {
     const km = S.distanceKm(guess[0], guess[1], target.la, target.lo), found = km <= info.foundKm;
@@ -411,19 +419,20 @@ function playMission({ token, seed }) {
   const rounds = S.pickMissionRounds(dams, missingPool, seed), guesses = [];
   let round = 0, guess = null, layers = [], locked = false;
   const dOf = (rd) => (rd.src === "k" ? dams[rd.i] : missingPool[rd.i]);
-  app.innerHTML = `<div class="hud"><span id="rd"></span><span class="pill part">🛰️ ${t("mission.title")}</span></div>
+  app.innerHTML = `<div class="hud"><span id="rd"></span>${switchHtml()}<span class="pill part">🛰️ ${t("mission.title")}</span></div>
     <div class="notice">${t("mission.blind")}</div>
     <div class="game"><div id="side"></div><div><div id="map"></div><p class="muted small">${t("map.centerhint")}</p>
     <div class="row actions"><button id="ctr" class="ghost">${t("map.center")}</button><button id="ok" disabled>${t("map.validate")}</button><button id="next" class="accent" hidden></button></div></div></div><div id="end"></div>`;
-  const place = (lat, lng) => { if (locked) return; guess = [lat, lng]; layers.forEach((l) => l.remove()); layers = [pin(lat, lng, PIN_GUESS, "drop").addTo(map)]; $("#ok").disabled = false; };
+  const place = (lat, lng) => { if (locked) return; guess = [lat, lng]; layers.forEach((l) => l.remove()); layers = [pin(lat, lng, PIN_GUESS, "drop").addTo(map)]; $("#ok").disabled = false; if (!safeMode()) $("#ok").click(); };
   makeMap(place, null);
+  bindSafe(() => { $("#ok").hidden = locked || !safeMode(); });
   $("#ctr").addEventListener("click", () => { const c = map.getCenter(); place(c.lat, S.wrapLng(c.lng)); });
   const render = () => {
     const d = dOf(rounds[round]); guess = null; locked = false;
     layers.forEach((l) => l.remove()); layers = []; frame(boundsOfIso(d.iso));
     $("#rd").textContent = t("map.round", { n: round + 1, t: S.MISSION_KNOWN + S.MISSION_UNKNOWN });
-    $("#side").innerHTML = clueCard(d, 3, -1, true) + `<p class="muted small">${t("map.hint")}</p>`;
-    $("#ok").hidden = false; $("#ok").disabled = true; $("#ctr").hidden = false; $("#next").hidden = true;
+    $("#side").innerHTML = clueCard(d, 3, -1, true) + `<p class="muted small">${hintTxt()}</p>`;
+    $("#ok").hidden = !safeMode(); $("#ok").disabled = true; $("#ctr").hidden = false; $("#next").hidden = true;
   };
   $("#ok").addEventListener("click", () => {
     const rd = rounds[round], d = dOf(rd); guesses.push(guess); locked = true; $("#ok").hidden = true; $("#ctr").hidden = true;

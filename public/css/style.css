@@ -178,3 +178,14 @@ dialog.sheet .close { position: absolute; top: 12px; right: 12px; min-height: 36
 .leaflet-container { font: inherit; }
 .leaflet-control-zoom a, .leaflet-control-layers-toggle { width: 38px !important; height: 38px !important; line-height: 38px !important; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+/* interrupteur « mode sécurisé » et accès rapide aux modes */
+.switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; font-size: .85rem; color: var(--muted); user-select: none; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch .slider { width: 40px; height: 22px; border-radius: 99px; background: #c9cfe6; position: relative; transition: background .15s; flex: none; }
+.switch .slider::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0004; transition: transform .15s; }
+.switch input:checked + .slider { background: var(--green); } .switch input:checked + .slider::after { transform: translateX(18px); }
+.switch input:focus-visible + .slider { outline: 3px solid var(--accent); outline-offset: 2px; }
+.quick { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0 4px; }
+.quick .muted { color: #c9d0f5; font-size: .9rem; } .quick .cta-sec { padding: 8px 16px; min-height: 40px; font-size: .92rem; }
+.country-h + .lead + .row + .quick .muted { color: var(--muted); } .country-h + .lead + .row + .quick .cta-sec { color: var(--navy); border-color: var(--navy); }

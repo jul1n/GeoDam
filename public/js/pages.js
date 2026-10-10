@@ -33,7 +33,7 @@ export function openSheet(d) {
     <dl class="kv">
       ${row(t("clue.river"), d.r)}${row(t("clue.reservoir"), d.rn)}${row(t("clue.owner"), d.ow)}${row(t("clue.year"), d.y)}${row(t("clue.type"), typeLabel(d))}
       ${row(t("clue.height"), d.h != null ? d.h + " m" : null)}${row(t("clue.length"), d.len ? fmt(d.len) + " m" : null)}${row(t("clue.elev"), d.el != null ? fmt(d.el) + " m" : null)}
-      ${row(t("clue.volume"), d.v != null ? fmt(d.v) + " hm³" : null)}${row(t("clue.catch"), d.ca ? fmt(d.ca) + " km²" : null)}${row(t("clue.power"), d.mw > 0 ? fmt(d.mw) + " MW" : null)}
+      ${row(t("clue.volume"), d.v > 0 ? fmt(d.v) + " hm³" : null)}${row(t("clue.catch"), d.ca ? fmt(d.ca) + " km²" : null)}${row(t("clue.power"), d.mw > 0 ? fmt(d.mw) + " MW" : null)}
       ${row(t("clue.use"), uses(d).join(", "))}${d.la != null ? row(t("sheet.coords"), `${d.la.toFixed(4)}, ${d.lo.toFixed(4)}`) : ""}
     </dl>${factsHtml(d)}${d.la != null ? '<div id="sheet-map" class="sheet-map" role="img" aria-label="Map"></div>' : ""}`;
   document.body.append(dlg);

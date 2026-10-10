@@ -45,10 +45,16 @@ export const hintFactor = (h) => 1 - HINT_COST * Math.min(MAX_HINTS, Math.max(0,
 
 // Réglages de difficulté selon la zone : le monde est noté sur ~1 500 km, un pays à l'échelle de son étendue.
 export const WORLD = { scale: 1500, foundKm: 25, distinct: true };
+// Emprise « robuste » d'un ensemble de barrages : on ignore les 2 % de points les plus excentrés (outre-mer, Alaska, Hawaï…)
+// pour que la carte se cadre sur le territoire principal (ex. la France hexagonale).
+export function robustBox(dams) {
+  const q = (a, p) => { const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.max(0, Math.round(p * (s.length - 1))))]; };
+  const la = dams.map((d) => d.la), lo = dams.map((d) => d.lo), p = dams.length >= 100 ? 0.01 : 0;
+  return [q(la, p), q(lo, p), q(la, 1 - p), q(lo, 1 - p)]; // [sud, ouest, nord, est]
+}
 export function poolInfo(dams, scope) {
   if (scope === "world") return WORLD;
-  let s = 90, n = -90, w = 180, e = -180;
-  for (const d of dams) { s = Math.min(s, d.la); n = Math.max(n, d.la); w = Math.min(w, d.lo); e = Math.max(e, d.lo); }
+  const [s, w, n, e] = robustBox(dams);
   const scale = Math.min(1500, Math.max(30, distanceKm(s, w, n, e) / 6));
   return { scale, foundKm: Math.max(3, scale / 60), distinct: false };
 }
