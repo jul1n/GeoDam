@@ -1,7 +1,7 @@
 // Pages « site public » inspirées du cahier des charges : Explorer (recherche + fiches), Le registre en chiffres,
 // Glossaire (+ quiz), À propos / mentions légales. Et les helpers de fiche barrage partagés avec le jeu.
 import { t, getLang, countryOf } from "./i18n.js";
-import { esc, fmt, confetti, countUp, toast } from "./ui.js";
+import { esc, fmt, confetti, countUp, toast, flag } from "./ui.js";
 import * as P from "./profile.js";
 
 const REGISTER_URL = "https://www.icold-cigb.org/GB/world_register/world_register_of_dams.asp";
@@ -29,7 +29,7 @@ export function openSheet(d) {
   const dlg = document.createElement("dialog");
   dlg.className = "sheet"; dlg.setAttribute("aria-labelledby", "sheet-h");
   dlg.innerHTML = `<form method="dialog"><button class="close" aria-label="${t("sheet.close")}">✕</button></form>
-    <h2 id="sheet-h">${esc(d.n)}</h2><p class="muted">${esc([countryOf(d), d.s, d.ci].filter(Boolean).join(" · "))}</p>
+    <h2 id="sheet-h">${esc(d.n)}</h2><p class="muted">${flag(d)}${esc([countryOf(d), d.s, d.ci].filter(Boolean).join(" · "))}</p>
     <dl class="kv">
       ${row(t("clue.river"), d.r)}${row(t("clue.reservoir"), d.rn)}${row(t("clue.owner"), d.ow)}${row(t("clue.year"), d.y)}${row(t("clue.type"), typeLabel(d))}
       ${row(t("clue.height"), d.h != null ? d.h + " m" : null)}${row(t("clue.length"), d.len ? fmt(d.len) + " m" : null)}${row(t("clue.elev"), d.el != null ? fmt(d.el) + " m" : null)}

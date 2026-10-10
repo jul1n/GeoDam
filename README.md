@@ -57,6 +57,8 @@ Le prototype ne remplace pas le site de l'ICOLD ; il montre comment certaines at
 | Données | Python/pandas (`scripts/build_data.py`) → `public/data/*.json` |
 | Démo statique | `public/js/api.js` simule l'API dans le navigateur (activée sur `*.github.io` ou `?demo=1`) |
 
+Les drapeaux (162 SVG, `public/flags/`) viennent de [flag-icons](https://github.com/lipis/flag-icons) (licence MIT, `public/flags/LICENSE-flag-icons.txt`) : embarqués, aucun appel à un service externe.
+
 Tous les chemins sont **relatifs** : le même code tourne à la racine (Cloudflare) ou sous `/GeoDam/` (Pages).
 
 ## Anti-triche (sans login)

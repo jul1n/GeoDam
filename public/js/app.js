@@ -2,7 +2,7 @@ import * as S from "./shared.js";
 import { t, getLang, setLang, countryOf, applyStatic } from "./i18n.js";
 import { api, DEMO, setResolver } from "./api.js";
 import * as P from "./profile.js";
-import { confetti, countUp, toast, esc, fmt } from "./ui.js";
+import { confetti, countUp, toast, esc, fmt, flag } from "./ui.js";
 import { uses, typeLabel, contLabel, factsHtml, openSheet, renderExplore, renderRegister, renderGlossary, renderAbout, missionProgress } from "./pages.js";
 
 const $ = (sel, el = document) => el.querySelector(sel);
@@ -310,7 +310,7 @@ function playMap({ token, seed }) {
     recap.push({ n: d.n, km, pts, hints });
     layers.push(pin(d.la, d.lo, PIN_TRUTH, "pulse").addTo(map), L.polyline([guess, [d.la, d.lo]], { color: "#111a4c", dashArray: "6 6", weight: 2 }).addTo(map));
     map.fitBounds(L.latLngBounds([guess, [d.la, d.lo]]).pad(0.5), { maxZoom: 7 });
-    $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">${reactFor(base)}</div><b>${esc(placeOf(d))}</b> — ${t("map.dist", { km: fmt(km) })}
+    $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">${reactFor(base)}</div><div class="where">${flag(d, "big")}<div><b>${esc(countryOf(d))}</b>${inWorld() || !(d.s || d.ci) ? "" : `<br><span class="muted">${esc(d.s || d.ci)}</span>`}</div></div>${t("map.dist", { km: fmt(km) })}
       <div class="pts-line">+<span id="rp">0</span>${hints ? ` <small>(−${hints * 10} %)</small>` : ""}</div>${factsHtml(d)}<button class="ghost" id="sheetbtn">${t("sheet.open")}</button>${safeMode() ? "" : `<p class="muted small">${t("map.next2")}</p>`}</div>`);
     countUp($("#rp"), pts, 700, fmt); $("#sheetbtn").addEventListener("click", () => openSheet(d));
     if (base >= 4800) confetti(80);
@@ -340,8 +340,8 @@ function playHilo({ token, seed }) {
     const { k, a, b } = steps[i], A = pool[a], B = pool[b]; locked = false;
     $("#streak").innerHTML = `${i >= 3 ? "🔥 " : ""}${t("hilo.streak", { n: i })}`;
     $("#stage").innerHTML = `<p class="stat-q">${t("hilo.q", { stat: t("stat." + k) })}</p>
-      <div class="versus"><div class="panel vs-card"><h3>${esc(A.n)}</h3><p class="muted">${esc(placeOf(A))}</p><div class="big">${esc(hiloFmt(A, k))}</div></div>
-      <div class="vs-card panel"><h3>${esc(B.n)}</h3><p class="muted">${esc(placeOf(B))}</p><div class="big" id="bval">?</div></div></div>
+      <div class="versus"><div class="panel vs-card"><h3>${esc(A.n)}</h3><p class="muted">${flag(A)}${esc(placeOf(A))}</p><div class="big">${esc(hiloFmt(A, k))}</div></div>
+      <div class="vs-card panel"><h3>${esc(B.n)}</h3><p class="muted">${flag(B)}${esc(placeOf(B))}</p><div class="big" id="bval">?</div></div></div>
       <div class="row actions center"><button data-g="h">${t("hilo.hi")}</button><button data-g="l">${t("hilo.lo")}</button></div>`;
     $("#stage").querySelectorAll("[data-g]").forEach((btn) => btn.addEventListener("click", () => answer(btn.dataset.g)));
   };
@@ -409,7 +409,7 @@ function playDaily({ token, seed }) {
       store.set(key, JSON.stringify(S.dailyScore(pool, seed, guesses, info)));
       if (found) confetti(150);
       finishGame("daily", token, { guesses }, {
-        summary: () => `<h2>${found ? t("daily.win") : t("daily.lose")}</h2><p>${t("daily.was", { n: esc(target.n), c: esc(countryOf(target)) })}</p>${factsHtml(target)}<button class="ghost" id="sheetbtn">${t("sheet.open")}</button>`,
+        summary: () => `<h2>${found ? t("daily.win") : t("daily.lose")}</h2><div class="where center">${flag(target, "big")}<span>${t("daily.was", { n: esc(target.n), c: esc(countryOf(target)) })}</span></div>${factsHtml(target)}<button class="ghost" id="sheetbtn">${t("sheet.open")}</button>`,
         xp: (r) => (r.found ? 15 + (S.DAILY_TRIES - r.tries) * 3 : 4), award: () => ({ daily: seed }), share: () => `GéoDam ${seed} ${found ? guesses.length : "X"}/${S.DAILY_TRIES}\n${ch.join("")}`,
       }).then(() => $("#sheetbtn")?.addEventListener("click", () => openSheet(target)));
     } else showClues();
@@ -446,7 +446,7 @@ function playMission({ token, seed }) {
       const km = S.distanceKm(guess[0], guess[1], d.la, d.lo), pts = S.mapPoints(km);
       layers.push(pin(d.la, d.lo, PIN_TRUTH, "pulse").addTo(map), L.polyline([guess, [d.la, d.lo]], { color: "#111a4c", dashArray: "6 6", weight: 2 }).addTo(map));
       map.fitBounds(L.latLngBounds([guess, [d.la, d.lo]]).pad(0.5), { maxZoom: 7 });
-      $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">${reactFor(pts)}</div>${t("map.dist", { km: fmt(km) })} → <span class="pts">+${fmt(pts)}</span></div>`);
+      $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">${reactFor(pts)}</div><div class="where">${flag(d, "big")}<b>${esc(countryOf(d))}</b></div>${t("map.dist", { km: fmt(km) })} → <span class="pts">+${fmt(pts)}</span></div>`);
     } else {
       $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">🛰️</div><b>${t("mission.thanks")}</b><br><span class="pts">${t("mission.bonus", { n: S.MISSION_BONUS })}</span>${safeMode() ? "" : `<p class="muted small">${t("map.next2")}</p>`}</div>`);
     }

@@ -211,3 +211,10 @@ dialog.sheet .close { position: absolute; top: 12px; right: 12px; min-height: 36
   body.playing .stat-q { font-size: 1.4rem; margin-top: 4vh; }
 }
 @media (min-width: 1500px) { html { font-size: 17px; } }
+
+/* drapeaux */
+.flag { width: 28px; height: 21px; object-fit: cover; border-radius: 3px; box-shadow: 0 0 0 1px rgba(17,26,76,.2); vertical-align: -4px; margin-right: 6px; }
+.flag.big { width: 56px; height: 42px; margin: 0; border-radius: 5px; box-shadow: 0 3px 10px rgba(17,26,76,.3); animation: flagin .6s cubic-bezier(.2, 1.4, .4, 1); transform-origin: left center; }
+@keyframes flagin { from { transform: scale(.4) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.where { display: flex; align-items: center; gap: 12px; font-size: 1.25rem; margin: 6px 0 4px; line-height: 1.2; } .where.center { justify-content: center; text-align: left; font-size: 1.1rem; }
+.vs-card .flag { margin-right: 6px; }

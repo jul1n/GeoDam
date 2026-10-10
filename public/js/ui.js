@@ -41,3 +41,6 @@ export function toast(html, kind = "") {
 import { getLang } from "./i18n.js";
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const fmt = (n) => new Intl.NumberFormat(getLang() === "fr" ? "fr-FR" : "en-US").format(Math.round(n));
+
+// Drapeau d'un pays (SVG embarqués dans /flags, licence MIT flag-icons). Les emojis de drapeaux ne s'affichent pas sous Windows.
+export const flag = (d, cls = "") => (d?.iso ? `<img class="flag ${cls}" src="flags/${String(d.iso).toLowerCase()}.svg" alt="" width="28" height="21" loading="lazy">` : "");
