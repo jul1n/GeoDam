@@ -1,0 +1,26 @@
+{
+  "total": 62362,
+  "avec_coordonnees": 42095,
+  "hors_plage_ou_0_0": 0,
+  "coordonnees_entieres_imprecises": 0,
+  "isoles_suspects(>1500km du 3e voisin)": 5,
+  "noms_generiques": 3240,
+  "jouables_h>=15m": 34069,
+  "pool_final": 9000,
+  "par_tier": {
+    "2": 6500,
+    "3": 2500
+  },
+  "top_pays": {
+    "Chine": 740,
+    "États-Unis d'Amérique": 717,
+    "Inde": 700,
+    "Japon": 700,
+    "Canada": 481,
+    "Türkiye": 478,
+    "Espagne": 334,
+    "France": 257,
+    "Australie": 250,
+    "Brésil": 242
+  }
+}
