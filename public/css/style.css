@@ -16,7 +16,7 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 
 /* ---------- en-tête ---------- */
 .top { background: linear-gradient(135deg, var(--navy), #1b2a73); color: #fff; border-bottom: 4px solid var(--accent); padding-top: env(safe-area-inset-top); position: sticky; top: 0; z-index: 20; }
-.top-in { display: flex; align-items: center; gap: 14px; max-width: 1140px; margin: 0 auto; padding: 8px 16px; min-height: 58px; }
+.top-in { display: flex; align-items: center; gap: 14px; max-width: min(1680px, 100%); margin: 0 auto; padding: 8px 16px; min-height: 58px; }
 .logo { font-size: 1.55rem; font-weight: 800; color: #fff; text-decoration: none; letter-spacing: -.02em; }
 .logo b { color: var(--accent); }
 #nav { display: flex; gap: 4px; flex: 1; overflow-x: auto; scrollbar-width: none; }
@@ -28,8 +28,8 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 .lang { display: flex; gap: 4px; }
 .top button.ghost { color: #fff; border-color: rgba(255,255,255,.5); padding: 4px 11px; min-height: 34px; font-size: .85rem; border-radius: 999px; }
 .top button.ghost[aria-pressed="true"] { background: #fff; border-color: #fff; color: var(--navy); }
-main { max-width: 1140px; margin: 0 auto; padding: 16px 16px 28px; outline: none; }
-footer { max-width: 1140px; margin: 0 auto; padding: 8px 16px 28px; color: var(--muted); font-size: .82rem; }
+main { max-width: min(1680px, 100%); margin: 0 auto; padding: 16px 16px 28px; outline: none; }
+footer { max-width: min(1680px, 100%); margin: 0 auto; padding: 8px 16px 28px; color: var(--muted); font-size: .82rem; }
 footer a { color: var(--brand-dark); }
 h1, h2, h3 { line-height: 1.2; margin: 0 0 .5em; color: var(--navy); }
 h1 { font-size: 1.9rem; letter-spacing: -.02em; } h2.sec { font-size: 1.35rem; margin-top: 28px; }
@@ -55,7 +55,7 @@ button.tab.good { background: #e6f4e1; border-color: var(--green); color: var(--
 
 /* ---------- hero ---------- */
 .hero { margin: 0 -16px; background: radial-gradient(1200px 400px at 85% -10%, #3a4cc0 0%, transparent 60%), linear-gradient(135deg, #111a4c 0%, #26358f 100%); color: #fff; border-radius: 0 0 28px 28px; overflow: hidden; }
-.hero-in { max-width: 1140px; margin: 0 auto; padding: 28px 16px 8px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 12px; align-items: center; }
+.hero-in { max-width: min(1680px, 100%); margin: 0 auto; padding: 28px 16px 8px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 12px; align-items: center; }
 .hero h1 { color: #fff; font-size: clamp(2rem, 5vw, 3.2rem); margin: 0 0 .3em; }
 .kicker { color: var(--accent); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; font-size: .8rem; margin: 0 0 6px; }
 .hero-sub { color: #dfe3f8; font-size: 1.1rem; max-width: 46ch; }
@@ -189,3 +189,25 @@ dialog.sheet .close { position: absolute; top: 12px; right: 12px; min-height: 36
 .quick { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0 4px; }
 .quick .muted { color: #c9d0f5; font-size: .9rem; } .quick .cta-sec { padding: 8px 16px; min-height: 40px; font-size: .92rem; }
 .country-h + .lead + .row + .quick .muted { color: var(--muted); } .country-h + .lead + .row + .quick .cta-sec { color: var(--navy); border-color: var(--navy); }
+
+/* ---------- plein écran : on exploite toute la largeur et toute la hauteur du navigateur ---------- */
+@media (min-width: 861px) {
+  main { padding-inline: clamp(16px, 2.5vw, 48px); }
+  .top-in { padding-inline: clamp(16px, 2.5vw, 48px); } .hero-in { padding-inline: clamp(16px, 2.5vw, 48px); }
+  .hero { margin-inline: calc(-1 * clamp(16px, 2.5vw, 48px)); }
+  .cards { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  body.playing main { max-width: none; padding: 8px clamp(12px, 1.6vw, 28px) 12px; }
+  body.playing .top-in { max-width: none; }
+  body.playing footer { display: none; }
+  body.playing .game { grid-template-columns: minmax(300px, 24vw) 1fr; gap: 12px; }
+  body.playing #map { height: calc(100dvh - 250px); min-height: 360px; }
+  body.playing #side { max-height: calc(100dvh - 190px); overflow: auto; padding-right: 4px; }
+  body.playing .hud { margin-bottom: 6px; }
+  body.playing .game .small { margin: 4px 0; }
+  body.playing .game .actions { margin-top: 6px; }
+  body.playing #end { max-width: 860px; margin-inline: auto; }
+  body.playing .versus { max-width: 1100px; margin-inline: auto; }
+  body.playing .vs-card { padding: clamp(24px, 6vh, 60px) 16px; } body.playing .vs-card h3 { font-size: 1.3rem; } body.playing .vs-card .big { font-size: clamp(2.6rem, 6vw, 4.6rem); }
+  body.playing .stat-q { font-size: 1.4rem; margin-top: 4vh; }
+}
+@media (min-width: 1500px) { html { font-size: 17px; } }

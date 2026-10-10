@@ -97,7 +97,7 @@ function setNav(r) {
 }
 const routeName = () => location.hash.replace(/^#\/?/, "");
 function route() {
-  destroyMap(); inGame = false;
+  destroyMap(); inGame = false; document.body.classList.remove("playing");
   const r = routeName();
   setNav(r);
   const pages = {
@@ -159,7 +159,7 @@ const quickHtml = (modes) => `<div class="row"><button class="cta-main" data-mod
   <div class="quick" role="group" aria-label="${esc(t("home.play"))}"><span class="muted">${t("hero.quick")}</span>${modes.filter((m) => m !== "map").map((m) => `<button class="cta-sec" data-mode="${m}">${ICON[m]} ${t("mode." + m)}</button>`).join("")}</div>`;
 
 function home() {
-  inGame = false; setNav("");
+  inGame = false; setNav(""); document.body.classList.remove("playing");
   if (inWorld()) setWorld(); else ctx.name = cname(countries.find((c) => c.iso === ctx.iso));
   const modes = inWorld() ? MODES : MODES.filter((m) => m !== "mission");
   const list = [...countries].sort((a, b) => cname(a).localeCompare(cname(b), getLang()));
@@ -266,7 +266,7 @@ async function finishGame(mode, token, payload, o) {
 async function start(mode) {
   if (mode === "mission" && !inWorld()) setWorld();
   if (routeName()) history.replaceState(null, "", "#/");
-  inGame = true; setNav("");
+  inGame = true; setNav(""); document.body.classList.add("playing");
   app.innerHTML = `<p class="muted">${t("prep")}</p>`;
   try {
     if (mode === "mission") await Promise.all([loadMissing(), fetch("data/bounds.json").then((r) => r.json()).then((b) => { bounds = b; })]);
