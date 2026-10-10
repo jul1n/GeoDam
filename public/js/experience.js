@@ -63,8 +63,8 @@ export function homeExtras(app,{start,resume,selectScope,dams,api}){
     '<p class="muted small">'+tr("Classements ludiques : les données publiques ne permettent pas de garantir l’absence de bots.","Casual leaderboards: public data cannot guarantee the absence of bots.")+'</p>';
   app.querySelector(".profile")?.after(el);
   const intro=document.createElement("section");intro.className="landing-intro";
-  intro.innerHTML='<h2>'+tr("Une carte. Des indices. À vous de jouer.","A map. A few clues. Your turn.")+'</h2><p>'+tr("Découvrez les barrages du monde et testez votre sens de la géographie, une manche après l’autre.","Discover the world’s dams and test your geography skills, one round at a time.")+'</p><button class="ghost" data-intro-tutorial>'+tr("Comment jouer ? · Essayer une manche","How to play · Try one round")+'</button>';
-  app.querySelector(".hero")?.after(intro);
+  intro.innerHTML='<p>'+tr("Première partie ? Découvrez le gameplay avec une manche guidée.","First game? Discover the gameplay with a guided round.")+'</p><button class="ghost" data-intro-tutorial>'+tr("Essayer le tutoriel","Try the tutorial")+'</button>';
+  app.querySelector(".landing-games")?.append(intro);
   intro.querySelector("button").onclick=()=>start("map",{practice:true,tutorial:true});
   if(g){const saved=el.querySelector('[data-action="resume"]');const row=saved?.closest('.row');if(row)intro.append(row);}
   el.addEventListener("click",async e=>{

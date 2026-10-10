@@ -212,44 +212,6 @@ $("#lang").addEventListener("click", (e) => {
 });
 
 // ---------------------------------------------------------------- accueil
-const heroSvg=()=>`<svg class="hero-art dam-diagram" viewBox="0 0 420 280" role="img" aria-labelledby="dam-title dam-desc">
-  <title id="dam-title">${tr("Barrage et retenue : coupe schématique","Dam and reservoir: schematic cross-section")}</title>
-  <desc id="dam-desc">${tr("Le barrage retient l’eau en amont. Une vanne permet une restitution contrôlée à la rivière en aval. La retenue peut servir à l’irrigation, à l’alimentation en eau et à la régulation des débits.","The dam stores water upstream. A gate controls releases to the downstream river. The reservoir can support irrigation, water supply and flow regulation.")}</desc>
-  <defs>
-    <linearGradient id="dam-water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a5c8ee"/><stop offset="1" stop-color="#537bb9"/></linearGradient>
-    <clipPath id="dam-reservoir"><path d="M0 114 Q22 111 44 114 T88 114 T132 114 T176 114 V235 H0Z"/></clipPath>
-  </defs>
-  <text class="dam-caption" x="8" y="20">${tr("Barrage et retenue · coupe schématique","Dam and reservoir · schematic cross-section")}</text>
-  <circle cx="364" cy="64" r="36" fill="#ee813c" opacity=".16"/><circle cx="364" cy="64" r="24" fill="#ee813c"/>
-  <path d="M0 157 L63 79 L107 115 L155 57 L201 122 L241 91 L292 156 V260 H0Z" fill="#354692" opacity=".65"/>
-  <path d="M0 184 L58 138 L117 164 L169 111 L250 172 L326 123 L420 177 V260 H0Z" fill="#1a2a71" opacity=".55"/>
-  <path d="M0 235 Q101 221 175 235 H285 Q307 220 336 235 H420 V260 H0Z" fill="#76b861"/>
-  <rect x="0" y="106" width="176" height="129" fill="url(#dam-water)" clip-path="url(#dam-reservoir)"/>
-  <path d="M0 114 Q22 111 44 114 T88 114 T132 114 T176 114" fill="none" stroke="#d7eaff" stroke-width="2"/>
-  <text class="dam-label" x="22" y="99">${tr("Retenue amont","Upstream reservoir")}</text>
-  <path d="M175 83 H211 L277 235 H175Z" fill="#eef0f8" stroke="#c2c8e6" stroke-width="2"/>
-  <path d="M184 93 H205 L267 229 H184Z" fill="#dce1f2"/>
-  <rect x="170" y="76" width="48" height="10" rx="3" fill="#ee813c"/>
-  <text class="dam-label" x="180" y="62">${tr("Barrage","Dam")}</text>
-  <path d="M200 67 V75" stroke="#dfe8ff" stroke-width="1.5"/>
-  <path d="M309 233 Q337 228 359 233 T420 233 V260 H303Z" fill="url(#dam-water)"/>
-  <path d="M155 200 H272" fill="none" stroke="#243461" stroke-width="16"/>
-  <path d="M155 200 H272" fill="none" stroke="#69b3de" stroke-width="9"/>
-  <path class="dam-flow" d="M155 200 H272" fill="none" stroke="#d9f3ff" stroke-width="3" stroke-dasharray="6 15"/>
-  <rect x="151" y="189" width="7" height="22" rx="2" fill="#dce1f2"/>
-  <path d="M150 192 H159 M150 198 H159 M150 204 H159 M150 209 H159" stroke="#243461" stroke-width="2"/>
-  <rect x="236" y="180" width="7" height="19" rx="1" fill="#ee813c"/>
-  <path d="M239 180 V168 M233 168 H245" stroke="#243461" stroke-width="3"/>
-  <text class="dam-label dam-dark" x="190" y="157">${tr("Vanne","Gate")}</text>
-  <path d="M221 159 L237 166" fill="none" stroke="#40517b" stroke-width="1.5"/>
-  <path d="M272 200 Q294 200 304 219 T333 235 H420" fill="none" stroke="#69b3de" stroke-width="9" stroke-linecap="round"/>
-  <path class="dam-flow" d="M272 200 Q294 200 304 219 T333 235 H420" fill="none" stroke="#d9f3ff" stroke-width="3" stroke-dasharray="6 15"/>
-  <text class="dam-label" x="279" y="172">${tr("Restitution contrôlée","Controlled release")}</text>
-  <path d="M301 178 L281 193" fill="none" stroke="#dfe8ff" stroke-width="1.5"/>
-  <text class="dam-label" x="338" y="274">${tr("Rivière aval","Downstream")}</text>
-  <path d="M375 231 l8 4 -8 4" fill="none" stroke="#d9f3ff" stroke-width="2"/>
-</svg>`;
-
 function profileCard() {
   const lv = P.level(), p = P.get();
   return `<section class="panel profile strip" aria-label="${t("prof.title")}">
@@ -264,16 +226,15 @@ function home() {
   if (inWorld()) setWorld(); else if (ctx.scope.startsWith("ct:")) ctx.name = contName(ctx.scope.slice(3)); else ctx.name = cname(countries.find((c) => c.iso === ctx.iso));
   const modes = inWorld() ? MODES : MODES.filter((m) => m !== "mission");
   const list = allScopes().sort((a, b) => cname(a).localeCompare(cname(b), getLang()));
-  const total = stats?.total ?? 62362, geo = stats?.geo ?? 42095, isW = inWorld(), isCt = ctx.scope.startsWith("ct:"), cur = usableLevel(curLevel());
+  const total = stats?.total ?? 62362, isW = inWorld(), cur = usableLevel(curLevel());
   lbLevel = cur;
-  const art = isW ? heroSvg() : `<div class="hero-art flagart" aria-hidden="true">${isCt ? '<span class="globe">🧭</span>' : flag({ iso: ctx.iso }, "xl")}</div>`;
   app.innerHTML = `
     <section class="hero landing-hero"><div class="hero-in"><div class="hero-txt">
       <p class="kicker">${isW ? t("hero.kicker") : t("hero.kicker.scope")}</p>
       <h1>${isW ? t("hero.title") : t("hero.title.scope", { c: esc(ctx.name) })}</h1>
       <p class="hero-sub">${isW ? t("hero.sub", { n: fmt(total) }) : t("hero.sub.scope", { n: fmt(ctx.pool.length) })}</p>
       <div class="row"><button class="cta-main" data-mode="map">▶ ${t("hero.cta")}</button></div>
-      <p class="landing-note">${tr("Observez les indices. Placez le barrage sur la carte.", "Read the clues. Place the dam on the map.")}</p>
+      <a class="landing-db-link" href="#/register">${tr("Explorer la base de données", "Explore the database")} →</a>
       <details class="play-options"><summary>${tr("Personnaliser ma partie", "Customize my game")}</summary>
       <div class="levels" role="radiogroup" aria-label="${esc(t("diff.title"))}">${S.LEVELS.map((l) => `<button type="button" class="lvlpill${cur === l ? " on" : ""}" role="radio" aria-checked="${cur === l}" data-level="${l}"${levelOk(l) ? "" : " disabled"}><b>${DIFF_ICON[l]} ${t("diff." + l)}</b><small>${t("diff." + l + ".d")}</small></button>`).join("")}</div>
       <form class="zonepill" id="cform" autocomplete="off"><span aria-hidden="true">📍</span><label class="sr" for="cinput">${t("scope.title")}</label>
@@ -282,9 +243,16 @@ function home() {
         ${isW ? "" : `<button type="button" class="ghost" id="cworld">${t("scope.back")}</button>`}</form>
       <p class="small hint" id="chint" role="status"></p>
       </details>
-      <div class="tiles">${modes.filter((m) => m !== "map").map((m) => `<button class="tile" data-mode="${m}"><span class="ti" aria-hidden="true">${ICON[m]}</span><span><b>${t("mode." + m)}</b><small>${t("tile." + m)}</small></span></button>`).join("")}</div>
-      ${isW ? `<ul class="chips"><li><b>${fmt(dams.length)}</b> ${t("hero.s1")}</li><li><b>${countries.length}</b> ${t("hero.s2")}</li></ul>` : ""}
-    </div>${art}</div></section>
+    </div><div class="gameplay-explainer">
+      <p class="kicker">${tr("Comment ça se joue", "How to play")}</p>
+      <ol><li><span>01</span><div><h2>${tr("Observez", "Observe")}</h2><p>${tr("Une photo, un nom ou des indices pour reconnaître le barrage.", "A photo, a name or clues to identify the dam.")}</p></div></li>
+      <li><span>02</span><div><h2>${tr("Placez votre repère", "Place your pin")}</h2><p>${tr("Cherchez son emplacement et cliquez sur la carte.", "Find its location and click on the map.")}</p></div></li>
+      <li><span>03</span><div><h2>${tr("Découvrez le résultat", "See your result")}</h2><p>${tr("Plus vous êtes proche, plus vous marquez de points.", "The closer you are, the more points you score.")}</p></div></li></ol>
+    </div></div></section>
+    <section class="landing-games" aria-labelledby="games-title"><div class="landing-heading"><p class="kicker">${tr("À vous de choisir", "Your choice")}</p><h2 id="games-title">${tr("Trois façons de jouer et de contribuer", "Three ways to play and contribute")}</h2></div>
+      <div class="game-cards">${modes.map((m,i)=>`<article class="game-card"><span class="game-number">0${i+1}</span><h3>${t("mode."+m)}</h3><p>${m === "mission" ? tr("Retrouvez les coordonnées manquantes et proposez un emplacement pour enrichir le registre.", "Find missing coordinates and suggest a location to enrich the register.") : t("mode."+m+".d")}</p><button class="${m === "map" ? "" : "ghost"}" data-mode="${m}">${m === "map" ? tr("Jouer une partie", "Play a game") : m === "daily" ? tr("Relever le défi du jour", "Take today’s challenge") : tr("Lancer une mission", "Start a mission")} →</button></article>`).join("")}</div>
+    </section>
+    <section class="landing-database" aria-labelledby="database-title"><div><p class="kicker">${tr("Le registre mondial CIGB / ICOLD", "The ICOLD World Register")}</p><h2 id="database-title">${tr("Explorez la base de données des barrages", "Explore the dam database")}</h2><p>${tr("Recherchez un barrage, explorez les pays et consultez les caractéristiques des ouvrages : hauteur, année, usages et localisation.", "Search for a dam, explore countries and view dam characteristics: height, year, purposes and location.")}</p><a class="btnlink" href="#/register">${tr("Ouvrir la base de données", "Open the database")} →</a></div><dl class="database-stats"><div><dt>${fmt(total)}</dt><dd>${tr("barrages dans le registre", "dams in the register")}</dd></div><div><dt>${fmt(dams.length)}</dt><dd>${tr("barrages en jeu", "playable dams")}</dd></div><div><dt>${countries.length}</dt><dd>${tr("pays jouables", "playable countries")}</dd></div></dl></section>
     <details class="landing-section profile-details"><summary>${tr("Ma progression et mes outils", "My progress and tools")}</summary>${profileCard()}</details>
     <details class="landing-section leaderboard-details"><summary>${tr("Les classements", "Leaderboards")}</summary>
     ${isW ? '<div id="mprog" class="panel"></div>' : ""}
