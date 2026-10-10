@@ -103,13 +103,13 @@ Object.assign(DICT.fr, EXTRA.fr, { "stat.len": "Longueur de crête (m)", "stat.e
 Object.assign(DICT.en, EXTRA.en, { "stat.len": "Crest length (m)", "stat.el": "Elevation (m)", "stat.ca": "Catchment area (km²)" });
 
 Object.assign(DICT.fr, {
- "safe.label":"Confirmer avant de répondre","map.next2":"Utilisez le bouton Manche suivante.",
+ "mission.p4":"connexions (90 j)","safe.label":"Confirmer avant de répondre","map.next2":"Utilisez le bouton Manche suivante.",
  "end.ipnotice":"Votre score publié est associé à un identifiant pseudonymisé de connexion pour prévenir les abus, pendant 90 jours au maximum.",
  "mission.bonus":"Bonus après enregistrement de la proposition : jusqu’à {n} points.",
  "legal.datatxt":"Les scores publiés et les missions enregistrent un identifiant pseudonymisé de connexion pour limiter les abus. La configuration par défaut ne conserve pas les IP en clair. Les identifiants, le navigateur et le pays de connexion sont purgés automatiquement après 90 jours. Les propositions et leur historique peuvent être conservés pour documenter le registre. Vos préférences et votre profil restent dans votre navigateur. Les fonds de carte et photos nécessitent des requêtes à Esri et Wikimedia. Contactez l’éditeur indiqué ci-dessous pour exercer vos droits."
 });
 Object.assign(DICT.en, {
- "safe.label":"Confirm before answering","map.next2":"Use the Next round button.",
+ "mission.p4":"connections (90 d)","safe.label":"Confirm before answering","map.next2":"Use the Next round button.",
  "end.ipnotice":"Your published score is associated with a pseudonymous connection identifier for abuse prevention, for up to 90 days.",
  "mission.bonus":"Bonus after saving the proposal: up to {n} points.",
  "legal.datatxt":"Published scores and missions store a pseudonymous connection identifier to prevent abuse. The default configuration does not store raw IP addresses. Identifiers, browser and connection country are automatically purged after 90 days. Proposals and review history may be retained to document the register. Your profile remains in your browser. Maps and photos make requests to Esri and Wikimedia. Contact the publisher listed below to exercise your rights."
@@ -117,6 +117,7 @@ Object.assign(DICT.en, {
 const KEY = "geodam-lang";
 let lang = "en";
 try { lang = localStorage.getItem(KEY); } catch { /* ignore */ }
+const urlLang=new URLSearchParams(location.search).get("lang");if(DICT[urlLang])lang=urlLang;
 if (!DICT[lang]) lang = (navigator.language || "en").toLowerCase().startsWith("fr") ? "fr" : "en";
 
 export const getLang = () => lang;

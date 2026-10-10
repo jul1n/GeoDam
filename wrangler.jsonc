@@ -5,14 +5,14 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*","/fr/barrages/*","/en/barrages/*"]
   },
   "d1_databases": [
     { "binding": "DB", "database_name": "geodam", "database_id": "00000000-0000-0000-0000-000000000000" }
   ],
   "triggers": {"crons": ["17 3 * * *"]},
   "vars": {
-    // "raw" = IP en clair (demandé) ; "hash" = HMAC de l'IP (recommandé RGPD, permet quand même l'anti-abus)
+    // "hash" = identifiant HMAC par défaut ; "raw" = mode historique à éviter
     "IP_MODE": "hash",
     "DATASET_VERSION": "wrd-2025-v1"
   }

@@ -23,3 +23,12 @@ CREATE TABLE IF NOT EXISTS api_limits (
 UPDATE scores SET hidden=1,ip=NULL WHERE mode='daily' AND ip IS NOT NULL
  AND id NOT IN (SELECT MIN(id) FROM scores WHERE mode='daily' AND ip IS NOT NULL GROUP BY scope,period,ip);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_unique ON scores(scope,period,ip) WHERE mode='daily' AND ip IS NOT NULL;
+
+CREATE TRIGGER IF NOT EXISTS contribution_bounds_insert BEFORE INSERT ON contributions
+WHEN NEW.la NOT BETWEEN -90 AND 90 OR NEW.lo NOT BETWEEN -180 AND 180 OR NEW.trust NOT BETWEEN 0 AND 1
+ OR (NEW.accuracy_km IS NOT NULL AND (NEW.accuracy_km<=0 OR NEW.accuracy_km>500))
+BEGIN SELECT RAISE(ABORT,'Invalid contribution'); END;
+CREATE TRIGGER IF NOT EXISTS contribution_bounds_update BEFORE UPDATE OF la,lo,trust,accuracy_km ON contributions
+WHEN NEW.la NOT BETWEEN -90 AND 90 OR NEW.lo NOT BETWEEN -180 AND 180 OR NEW.trust NOT BETWEEN 0 AND 1
+ OR (NEW.accuracy_km IS NOT NULL AND (NEW.accuracy_km<=0 OR NEW.accuracy_km>500))
+BEGIN SELECT RAISE(ABORT,'Invalid contribution'); END;

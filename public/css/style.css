@@ -1,7 +1,7 @@
 /* GéoDam — charte inspirée du site de la CIGB/ICOLD : marine #111a4c, bleu #5e70d0, orange #ee813c, vert #76b861, gris clairs. Thème clair. */
 :root {
   color-scheme: light;
-  --navy: #111a4c; --brand: #5e70d0; --brand-dark: #4a5bb8; --accent: #ee813c; --accent-dark: #b4540f; --green: #76b861; --green-ink: #3f7d2c;
+  --navy: #111a4c; --brand: #5365bd; --brand-dark: #4a5bb8; --accent: #ee813c; --accent-dark: #b4540f; --green: #76b861; --green-ink: #3f7d2c;
   --bg: #f3f3f3; --panel: #fff; --ink: #1e2430; --muted: #566070; --line: #e3e6ee; --r: 16px; --shadow: 0 6px 24px rgba(17, 26, 76, .09);
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -63,9 +63,9 @@ button.tab.good { background: #e6f4e1; border-color: var(--green); color: var(--
 .cta-main:hover:not(:disabled) { background: #f6a068; }
 .cta-sec { background: transparent; border-color: rgba(255,255,255,.7); color: #fff; }
 .cta-sec:hover:not(:disabled) { background: rgba(255,255,255,.14); }
-.chips { list-style: none; display: flex; gap: 10px; flex-wrap: wrap; padding: 0; margin: 18px 0 14px; }
-.chips li { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 5px 14px; font-size: .9rem; }
-.chips b { color: #fff; font-size: 1.05rem; }
+.chips { list-style: none; display: flex; gap: 6px 22px; flex-wrap: wrap; padding: 0; margin: 14px 0 12px; color: #dfe3f8; }
+.chips li { padding: 0; font-size: .85rem; }
+.chips b { color: inherit; font-size: inherit; font-weight: 600; }
 .hero-art { width: 100%; height: auto; max-height: 300px; align-self: end; }
 .wave { animation: drift 7s linear infinite; } .w2 { animation-duration: 11s; animation-direction: reverse; }
 @keyframes drift { to { transform: translateX(100px); } }
@@ -319,3 +319,13 @@ dialog.sheet { overflow:auto; max-width:calc(100vw - 24px); }
   .top { position:relative; }
   #map { height:65dvh;min-height:200px; }
 }
+
+
+/* Reservoir storage and a controlled downstream release, independent of electricity generation. */
+.hero-art.dam-diagram { overflow:visible;max-height:320px; }
+.dam-label { fill:#edf3ff; paint-order:stroke;stroke:#111a4c;stroke-width:3px;stroke-linejoin:round;font:600 13px/1.2 "Segoe UI",system-ui,sans-serif; }
+.dam-label.dam-dark { fill:#243461;stroke:#eef0f8;stroke-width:3px; }
+.dam-caption { fill:#edf3ff; font:700 12px/1.2 "Segoe UI",system-ui,sans-serif; }
+.dam-flow { animation:dam-current 2.4s linear infinite; }
+@keyframes dam-current { to { stroke-dashoffset:-42; } }
+@media (prefers-reduced-motion:reduce) { .dam-flow { animation:none!important; } }

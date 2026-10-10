@@ -180,7 +180,7 @@ Configurer public/site.json : URL publique, éditeur et contact ; productionRead
 
 IP_MODE=hash est le défaut ; mettre à jour un ancien .dev.vars qui imposerait raw. La purge quotidienne du Worker supprime après 90 jours les identifiants de connexion, navigateur et pays de connexion. Limites API et résultats temporaires expirent après un jour.
 
-Sur Windows :
+Sur Windows (npm run db:backup utilise également le chemin chiffré local pour la base distante) :
 ~~~powershell
 # Export local anonymisé, contrôle de restauration, chiffrement DPAPI.
 npm run db:backup:verified
@@ -209,4 +209,4 @@ npm test
 ~~~
 test/reliability.mjs vérifie concurrence, votes répétés, revue et protections des requêtes sur un serveur local avec les seuls secrets de test. test/browser.mjs vérifie mobile, clavier, reprise et hors ligne avec Playwright/Chrome. Le workflow Quality contrôle données, migration, logique, API et parcours navigateur.
 
-L’illustration d’accueil représente une centrale hydroélectrique en coupe : prise immergée, conduite fermée, turbine et alternateur, puis restitution en aval. Elle respecte la préférence de réduction des animations. Principe : https://www.energy.gov/cmei/water/how-hydropower-works
+L’illustration d’accueil représente un barrage et sa retenue en coupe schématique, avec une restitution contrôlée en aval. Elle évoque l’irrigation, l’alimentation en eau et la régulation des débits, sans équipement de production électrique. Elle respecte la préférence de réduction des animations.

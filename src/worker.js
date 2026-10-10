@@ -1,3 +1,7 @@
+import registerStats from "../public/data/stats.json";
+import datasetMetadata from "../public/data/version.json";
+const DATASET_VERSION=datasetMetadata.version+":"+datasetMetadata.fingerprint;
+import { publicDamPage } from "./public-pages.js";
 import dams from "../public/data/dams.json";
 import countries from "../public/data/countries.json";
 import missing from "../public/data/missing.json";
@@ -74,7 +78,7 @@ async function startSession(request, env) {
   if (!MODES.includes(mode) || !okScope(scope) || (mode === "mission" && scope !== "world")) return fail("bad_mode");
   if (mode === "map" && level !== undefined && !LEVELS.includes(level)) return fail("bad_mode");
   const seed = mode === "daily" ? today() : crypto.randomUUID().slice(0, 8);
-  const sess = { m: mode, sc: scope, seed, v: env.DATASET_VERSION || "wrd-2025-v1", t: Date.now(), id: crypto.randomUUID(), ...(mode === "map" ? { lv: level ?? "hard" } : {}) };
+  const sess = { m: mode, sc: scope, seed, v: DATASET_VERSION, t: Date.now(), id: crypto.randomUUID(), ...(mode === "map" ? { lv: level ?? "hard" } : {}) };
   return json({ token: await sign(env, sess), seed, mode, scope });
 }
 
@@ -83,7 +87,7 @@ async function finish(request, env) {
   const sess = await verify(env, body.token);
   if (!sess || sess.k) return fail("invalid_session", 401);
   const age = Date.now() - sess.t;
-  if(age<0 || age>SESSION_TTL || sess.v!==(env.DATASET_VERSION||"wrd-2025-v1"))return fail("expired",410);
+  if(age<0 || age>SESSION_TTL || sess.v!==DATASET_VERSION)return fail("expired",410);
   const payloadHash=b64u(await crypto.subtle.digest("SHA-256",enc.encode(JSON.stringify({guesses:body.guesses,evidence:body.evidence||[]}))));
   const saved=await db(env).first("SELECT payload_hash,response FROM finished_games WHERE sid=?",sess.id);
   if(saved&&saved.payload_hash!==payloadHash)return fail("invalid_game",409);
@@ -112,8 +116,7 @@ async function finish(request, env) {
   if(sess.m==="mission")community=await storeContributions(request,env,sess,res,body.evidence);
   if(community)res.score+=community.saved*500;
   const period = periodFor(sess.m, sess), board = sess.m === "map" ? `map:${sess.lv || "hard"}` : sess.m;   // un classement par niveau
-  const { results } = await env.DB.prepare(
-    "SELECT COUNT(*) AS n FROM scores WHERE scope=?4 AND mode=?1 AND period=?2 AND hidden=0 AND score>?3").bind(board, period, res.score, sess.sc).all();
+  const { results } = {results:await db(env).all("SELECT COUNT(*) AS n FROM scores WHERE scope=?4 AND mode=?1 AND period=?2 AND hidden=0 AND score>?3",board,period,res.score,sess.sc)};
   const qualifies = res.score > 0 && results[0].n < TOP_N;
   const claim = qualifies ? await sign(env, { k: 1, m: board, sc: sess.sc, p: period, s: res.score, id: sess.id, t: Date.now() }) : null;
   const { contrib, ...pub } = res;
@@ -154,14 +157,14 @@ const distance=(a,b)=>{
   return 12742*Math.asin(Math.min(1,Math.sqrt(x)));
 };
 async function consensusRows(env){
-  const results=await db(env).all("SELECT c.dam_id,c.la,c.lo,c.trust FROM contributions c WHERE c.ip IS NOT NULL AND c.trust>=0.3 AND c.source!='' AND c.status!='rejected' AND c.id=(SELECT MAX(x.id) FROM contributions x WHERE x.dam_id=c.dam_id AND x.ip=c.ip AND x.status!='rejected') ORDER BY c.id");
+  const results=await db(env).all("SELECT c.dam_id,c.la,c.lo,c.trust FROM contributions c WHERE c.ip IS NOT NULL AND c.trust>=0.3 AND c.source!='' AND c.accuracy_km<=5 AND c.status!='rejected' AND c.id=(SELECT MAX(x.id) FROM contributions x WHERE x.dam_id=c.dam_id AND x.ip=c.ip AND x.status!='rejected') ORDER BY c.id");
   const by=new Map();for(const r of results){if(!by.has(r.dam_id))by.set(r.dam_id,[]);by.get(r.dam_id).push(r);}
   return [...by].map(([id,pts])=>({id,...consensus(pts),trust:+(pts.reduce((s,p)=>s+p.trust,0)/pts.length).toFixed(2)}));
 }
 async function missionProgress(env){
   const rows=await consensusRows(env),counts=await db(env).first("SELECT COUNT(*) AS n,COUNT(DISTINCT ip) AS p,COUNT(DISTINCT dam_id) AS d FROM contributions");
   const accepted=await db(env).first("SELECT COUNT(*) AS n FROM contribution_reviews r WHERE status='accepted' AND id=(SELECT MAX(id) FROM contribution_reviews WHERE dam_id=r.dam_id)");
-  return json({proposals:counts.n,contributors:counts.p,damsTouched:counts.d,validated:rows.filter(r=>r.ready&&!r.conflicted).length,accepted:accepted.n,pool:missing.length,totalMissing:20267});
+  return json({proposals:counts.n,contributors:counts.p,damsTouched:counts.d,validated:rows.filter(r=>r.ready&&!r.conflicted).length,accepted:accepted.n,pool:missing.length,totalMissing:registerStats.total-registerStats.geo});
 }
 const isAdmin=(request,env)=>env.ADMIN_TOKEN&&request.headers.get("Authorization")==="Bearer "+env.ADMIN_TOKEN;
 async function adminContributions(request,url,env){
@@ -169,7 +172,7 @@ async function adminContributions(request,url,env){
   const meta=new Map(missing.map(m=>[m.id,m]));
   const rows=(await consensusRows(env)).map(r=>({dam_id:r.id,name:meta.get(r.id)?.n,country:meta.get(r.id)?.ce,lat:+r.la.toFixed(5),lon:+r.lo.toFixed(5),independent_votes:r.n,total_votes:r.total,outliers:r.outliers,spread_km:Math.round(r.spread),avg_trust:r.trust,status:r.ready&&!r.conflicted?"ready_for_review":"needs_more_votes"}));
   if(url.searchParams.get("format")==="csv"){
-    const head=Object.keys(rows[0]||{dam_id:0}),cell=v=>'"'+String(v??"").replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';
+    const head=Object.keys(rows[0]||{dam_id:0}),cell=v=>'"'+String(v??"").replace(/^[\s=+@-]/,"'$&").replace(/"/g,'""')+'"';
     return new Response([head.map(cell).join(","),...rows.map(r=>head.map(k=>cell(r[k])).join(","))].join("\r\n"),
       {headers:{"content-type":"text/csv; charset=utf-8","cache-control":"no-store","content-disposition":"attachment; filename=geodam-contributions.csv"}});
   }
@@ -180,9 +183,12 @@ async function reviewContribution(request,env){
   const b=await request.json();
   if(!missingIds.has(b.dam_id)||!["in_review","accepted","rejected"].includes(b.status)||typeof b.note!=="string"||!b.note.trim()||b.note.length>1000||typeof b.reviewer!=="string"||!b.reviewer.trim()||b.reviewer.length>100)return fail("invalid_game");
   if(b.status==="accepted"&&(!Number.isFinite(b.lat)||Math.abs(b.lat)>90||!Number.isFinite(b.lon)||Math.abs(b.lon)>180))return fail("invalid_game");
+  const proposals=await db(env).all("SELECT id,la,lo FROM contributions WHERE dam_id=?",b.dam_id);
+  if(!proposals.length)return fail("invalid_game");
+  const changes=proposals.map(p=>["UPDATE contributions SET status=? WHERE id=?",b.status==="accepted"?(distance(p,{la:b.lat,lo:b.lon})<=5?"accepted":"rejected"):b.status,p.id]);
   await db(env).batch([
     ["INSERT INTO contribution_reviews(dam_id,status,lat,lon,note,reviewer) VALUES(?,?,?,?,?,?)",b.dam_id,b.status,b.status==="accepted"?b.lat:null,b.status==="accepted"?b.lon:null,b.note,b.reviewer],
-    ["UPDATE contributions SET status=? WHERE dam_id=?",b.status,b.dam_id]
+    ...changes
   ]);return json({ok:true});
 }
 async function contributionDetail(request,url,env){
@@ -219,17 +225,15 @@ async function submit(request, env) {
   if (!NAME_RE.test(name)) return fail("bad_name");
 
   const ip = await playerIp(request, env);
-  const { results: recent } = await env.DB.prepare(
-    "SELECT COUNT(*) AS n FROM scores WHERE ip=?1 AND created_at > datetime('now','-1 hour')").bind(ip).all();
+  const recent=await db(env).all("SELECT COUNT(*) AS n FROM scores WHERE ip=?1 AND created_at>datetime('now','-1 hour')",ip);
   if (recent[0].n >= SUBMITS_PER_HOUR) return fail("rate", 429);
   if (c.m === "daily") {
-    const { results: dup } = await env.DB.prepare("SELECT 1 FROM scores WHERE mode='daily' AND scope=?3 AND period=?1 AND ip=?2").bind(c.p, ip, c.sc).all();
+    const dup=await db(env).all("SELECT 1 FROM scores WHERE mode='daily' AND scope=?3 AND period=?1 AND ip=?2",c.p,ip,c.sc);
     if (dup.length) return fail("dup_daily", 409);
   }
   try {
-    const inserted=await env.DB.prepare(
-      "INSERT INTO scores (sid,mode,scope,period,name,score,ip,country,ua) SELECT ?1,?2,?3,?4,?5,?6,?7,?8,?9 WHERE (SELECT COUNT(*) FROM scores WHERE ip=?7 AND created_at>datetime(\'now\',\'-1 hour\'))<10")
-      .bind(c.id, c.m, c.sc, c.p, name, c.s, ip, request.cf?.country ?? null, (request.headers.get("User-Agent") || "").slice(0, 200)).run();
+    const inserted=await db(env).run("INSERT INTO scores(sid,mode,scope,period,name,score,ip,country,ua) SELECT ?1,?2,?3,?4,?5,?6,?7,?8,?9 WHERE (SELECT COUNT(*) FROM scores WHERE ip=?7 AND created_at>datetime('now','-1 hour'))<10",
+      c.id,c.m,c.sc,c.p,name,c.s,ip,request.cf?.country??null,(request.headers.get("User-Agent")||"").slice(0,200));
     if(!inserted.meta?.changes)return fail("rate",429);
   } catch { return fail("dup", 409); }
   return json({ ok: true });
@@ -240,15 +244,17 @@ async function leaderboard(url, env) {
   const scope = url.searchParams.get("scope") || "world", level = url.searchParams.get("level") || "hard";
   if (!MODES.includes(mode) || !okScope(scope) || !LEVELS.includes(level)) return fail("bad_mode");
   const period = mode === "daily" ? (url.searchParams.get("period") || today()) : "all";
-  const { results } = await env.DB.prepare(
-    "SELECT name, score, country, created_at FROM scores WHERE scope=?3 AND mode=?1 AND period=?2 AND hidden=0 ORDER BY score DESC, id ASC LIMIT 20")
-    .bind(mode === "map" ? `map:${level}` : mode, period, scope).all();
+  const results=await db(env).all("SELECT name,score,country,created_at FROM scores WHERE scope=?3 AND mode=?1 AND period=?2 AND hidden=0 ORDER BY score DESC,id ASC LIMIT 20",mode==="map"?"map:"+level:mode,period,scope);
   return json({ mode, scope, period, entries: results });
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if(!url.pathname.startsWith("/api/")){
+      if(!["GET","HEAD"].includes(request.method))return fail("not_found",405);
+      try{return await publicDamPage(request,env) || await env.ASSETS.fetch(request);}catch{return new Response("Public page unavailable",{status:503});}
+    }
     if(!env.SECRET || env.SECRET.length<24)return fail("server",500);
     try {
       if(request.method==="POST"){
@@ -261,6 +267,8 @@ export default {
         const bytes=new Uint8Array(size);let offset=0;for(const c of chunks){bytes.set(c,offset);offset+=c.length;}
         request=new Request(request.url,{method:request.method,headers:request.headers,body:bytes,cf});
       }
+      const routes=new Set(["/api/session","/api/finish","/api/submit","/api/leaderboard","/api/mission/progress","/api/mission/status","/api/admin/review","/api/admin/detail","/api/admin/contributions"]);
+      if(!routes.has(url.pathname))return fail("not_found",404);
       if(!await rateLimit(request,env,url.pathname))return fail("rate",429);
       if(url.pathname==="/api/admin/review"&&request.method==="POST")return await reviewContribution(request,env);
       if(url.pathname==="/api/admin/detail"&&request.method==="GET")return await contributionDetail(request,url,env);

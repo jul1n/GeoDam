@@ -98,8 +98,8 @@ async function demo(path, body) {
   }
   if(route==="mission/status"){const sess=dec(body.token);if(!sess)throw fail("invalid_session");return {items:db.contrib.filter(c=>c.sid===sess.id).map(c=>({id:c.id,status:c.status||"proposed"}))};}
   if (route === "mission/progress") {
-    const ids = new Set(db.contrib.map((c) => c.id));
-    return { proposals: db.contrib.length, contributors: db.contrib.length ? 1 : 0, damsTouched: ids.size, validated: 0, pool: 1522, totalMissing: 20267, demo: true };
+    const ids=new Set(db.contrib.map(c=>c.id)),zone=await resolver("world");
+    return { proposals: db.contrib.length, contributors: db.contrib.length ? 1 : 0, damsTouched: ids.size, validated: 0, pool:zone?.missing?.length||0,totalMissing:zone?.stats?zone.stats.total-zone.stats.geo:0, demo: true };
   }
   throw fail("not_found");
 }

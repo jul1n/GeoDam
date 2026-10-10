@@ -42,7 +42,7 @@ export function openSheet(d) {
     const link=document.createElement("a");link.href=getLang()+"/barrages/"+encodeURIComponent(d.id)+"/";link.textContent=tr("Ouvrir la fiche partageable","Open shareable dam page");dlg.append(link);
   }
   document.body.append(dlg);
-  dlg.addEventListener("close", () => { sheetMap?.remove(); dlg.remove();previousFocus?.focus(); });
+  dlg.addEventListener("close", () => { sheetMap?.stop();sheetMap?.remove();sheetMap=null;dlg.remove();previousFocus?.focus(); });
   dlg.showModal();
   let sheetMap = null;
   if (d.la != null && window.L) {
@@ -83,7 +83,8 @@ export async function renderRegister(el, { api, startMission, dams, pools }) {
   el.innerHTML = `<section class="page"><h1>${t("reg.title")}</h1><div class="icold-row"><a href="https://www.icold-cigb.org/" target="_blank" rel="noopener"><img class="logo-icold sm" src="img/logo-icold.png" alt="ICOLD · CIGB" width="64" height="64"></a><p class="lead">${t("reg.lead")}</p></div><div class="panel" id="exp"></div><div id="regbody" class="panel">…</div><p class="muted">${t("reg.note")}</p></section>`;
   exploreBlock($("#exp", el), { dams, pools });
   let s;
-  try { s = await (await fetch("data/stats.json")).json(); } catch { $("#regbody", el).textContent = t("err.net"); return; }
+  try { s = await (await fetch("data/stats.json")).json(); } catch{const panel=$("#regbody",el);if(panel)panel.textContent=t("err.net");return;}
+  if(!$("#regbody",el))return;
   const lang = getLang();
   const bars = (items, max) => items.map(([label, v, sub]) => `<div class="bar"><span class="bl">${esc(label)}</span><span class="bt"><i style="width:${Math.max(2, (v / max) * 100)}%"></i></span><span class="bv">${sub ?? fmt(v)}</span></div>`).join("");
   const dec = Object.entries(s.decennies), dmax = Math.max(...dec.map(([, v]) => v));
@@ -92,6 +93,7 @@ export async function renderRegister(el, { api, startMission, dams, pools }) {
     const h = (v / dmax) * H; return `<g><rect x="${i * bw + 3}" y="${H - h}" width="${bw - 6}" height="${h}" rx="3"><title>${k}s : ${fmt(v)}</title></rect>${i % 2 === 0 ? `<text x="${i * bw + bw / 2}" y="${H + 16}" text-anchor="middle">${k}</text>` : ""}</g>`;
   }).join("")}</svg>`;
   const comp = Object.entries(s.completude);
+  const accessibleDecades='<details><summary>'+tr("Données du graphique des décennies","Decade chart data")+'</summary><table class="lb"><caption>'+t("reg.decades")+'</caption><thead><tr><th>'+tr("Décennie","Decade")+'</th><th>'+tr("Barrages","Dams")+'</th></tr></thead><tbody>'+dec.map(([year,n])=>'<tr><th scope="row">'+esc(year)+'</th><td>'+fmt(n)+'</td></tr>').join("")+'</tbody></table></details>';
   $("#regbody", el).innerHTML = `
     <div class="kpis"><div><b id="k1">0</b><span>${t("reg.total")}</span></div><div><b id="k2">0</b><span>${t("reg.geo")}</span></div><div><b id="k3">0</b><span>${t("reg.countries")}</span></div></div>
     <h2>${t("reg.complete")}</h2><p class="muted">${t("reg.completelead")}</p>
@@ -99,7 +101,7 @@ export async function renderRegister(el, { api, startMission, dams, pools }) {
     <div class="cta"><div><b>${t("reg.cta")}</b><br><span>${t("reg.ctatxt")}</span></div><button id="regcta" class="accent">${t("hero.cta2")}</button></div>
     <div id="mprog"></div>
     <h2>${t("reg.uses")}</h2>${bars(Object.entries(s.usages).sort((a, b) => b[1] - a[1]).map(([c, v]) => [t("use." + c), v]), Math.max(...Object.values(s.usages)))}
-    <h2>${t("reg.decades")}</h2>${chart}
+    <h2>${t("reg.decades")}</h2>${chart}${accessibleDecades}
     <div class="two"><div><h2>${t("reg.topc")}</h2>${bars((lang === "fr" ? s.top_pays : s.top_pays_en).map((c) => [c[lang === "fr" ? "fr" : "en"], c.n]), s.top_pays[0].n)}</div>
     <div><h2>${t("reg.tall")}</h2>${bars(s.plus_hauts.map((d) => [d.n, d.h, d.h + " m"]), s.plus_hauts[0].h)}<h2>${t("reg.big")}</h2>${bars(s.plus_gros.map((d) => [d.n, d.v, fmt(d.v)]), s.plus_gros[0].v)}</div></div>
     <p><a class="btnlink" href="${REGISTER_URL}" target="_blank" rel="noopener">${t("reg.link")} ↗</a></p>`;
@@ -188,6 +190,9 @@ export function renderAbout(el, { demo }) {
     <h2>${t("about.icold")}</h2><div class="icold-row"><img class="logo-icold" src="img/logo-icold.png" alt="ICOLD · CIGB" width="96" height="96"><p>${t("about.icoldtxt")}</p></div><h2>${t("about.data")}</h2><p>${t("about.datatxt")}</p></div>
     <div class="panel"><h2>${t("about.brief")}</h2><p class="muted">${t("about.brief.lead")}</p>
     <ul class="brief">${brief.map(([n, st, note]) => `<li><span class="pill ${st}">${t("brief." + st)}</span><div><b>${t("brief." + n)}</b>${note ? `<br><small>${t("brief." + note)}</small>` : ""}</div></li>`).join("")}</ul></div>
-    <div class="panel" id="legal"><h2 class="h2">${t("legal.title")}</h2><h2>${t("legal.who")}</h2><p>${t("legal.whotxt")}</p>
+    <div class="panel" id="legal"><h2 class="h2">${t("legal.title")}</h2><h2>${t("legal.who")}</h2><p id="publisher">${t("legal.whotxt")}</p>
     <h2>${t("legal.data")}</h2><p>${t("legal.datatxt")}</p><h2>${t("legal.host")}</h2><p>${t("legal.hosttxt")}</p><h2>${t("legal.photos.h")}</h2><p>${t("legal.photos")}</p>${demo ? `<p class="notice">${t("legal.demo")}</p>` : ""}</div></section>`;
+  fetch("site.json").then(r=>r.json()).then(site=>{
+    const target=el.querySelector("#publisher");if(target&&site.publisher)target.textContent=site.publisher+(site.contact?" · "+site.contact:"");
+  }).catch(()=>{});
 }

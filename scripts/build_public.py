@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 ROOT=Path(__file__).resolve().parents[1]
 def load(p):return json.loads((ROOT/p).read_text(encoding="utf-8"))
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument("--limit",type=int);parser.add_argument("--output");parser.add_argument("--production",action="store_true")
+    parser=argparse.ArgumentParser();parser.add_argument("--limit",type=int);parser.add_argument("--output");parser.add_argument("--production",action="store_true");parser.add_argument("--worker",action="store_true",help="Render dam pages on demand in the Worker")
     args=parser.parse_args();out=Path(args.output) if args.output else ROOT/"public"
     site=load("public/site.json");base=site["url"].rstrip("/")+"/"
     if args.production and not(site.get("productionReady") and site.get("publisher") and site.get("contact")):
@@ -28,6 +28,8 @@ def main():
         return quote(str(id),safe="")
     def write_page(lang,path,title,desc,body):
         route=lang+"/"+path.strip("/")+"/" if path else lang+"/"
+        if args.worker and path.startswith("barrages/"):
+            urls.append(base+route);return
         target=out/route/"index.html";target.parent.mkdir(parents=True,exist_ok=True)
         depth=len(Path(route).parts);prefix="../"*depth
         canonical=base+route
@@ -59,6 +61,7 @@ def main():
             body='<dl class="kv">'+''.join('<dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd>' for k,v in fields if v is not None)+'</dl><p>'+("Source : registre ICOLD 2025 ; extrait public, position à vérifier selon la précision de la source." if fr else "Source: ICOLD 2025 register; public extract, location subject to source accuracy.")+'</p><p><a href="../../pays/'+esc(d["iso"])+'/">'+("Autres barrages du pays" if fr else "More dams in this country")+'</a></p>'
             write_page(lang,"barrages/"+safe_id(d["id"]),d["n"],d["n"]+" · "+str(d.get("c" if fr else "ce",""))+" · ICOLD 2025",body)
     out.mkdir(parents=True,exist_ok=True)
+    (ROOT/"public/data/dam-index.json").write_text(json.dumps({id:d["iso"] for id,d in all_dams.items()},ensure_ascii=False,separators=(",",":")),encoding="utf-8")
     # Split sitemap for installations with more than 50,000 URLs.
     sitemap_names=[]
     for i in range(0,len(urls),45000):
@@ -68,8 +71,13 @@ def main():
     (out/"robots.txt").write_text("User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: "+base+"sitemap.xml\n",encoding="utf-8")
     manifest={"version":site["datasetVersion"],"sourceEdition":"ICOLD WRD 2025","publicDams":len(all_dams),"worldPool":len(load("public/data/dams.json")),"files":{}}
     for f in sorted((ROOT/"public/data").rglob("*.json")):
-        if f.name=="version.json":continue
+        if f.name in ("version.json","dam-index.json"):continue
         manifest["files"][str(f.relative_to(ROOT/"public")).replace("\\","/")]={"bytes":f.stat().st_size,"sha256":hashlib.sha256(f.read_bytes()).hexdigest()}
+    manifest["fingerprint"]=hashlib.sha256(json.dumps(manifest["files"],sort_keys=True).encode()).hexdigest()[:16]
+    sw=ROOT/"public/sw.js"
+    shell_files=[ROOT/"public"/p for p in ["index.html","css/style.css",*["js/"+p.name for p in (ROOT/"public/js").glob("*.js")]]]
+    shell_hash=hashlib.sha256((manifest["fingerprint"]+"".join(hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(shell_files))).encode()).hexdigest()[:16]
+    sw.write_text(re.sub(r'const VERSION="[^"]+";', 'const VERSION="geodam-'+shell_hash+'";',sw.read_text(encoding="utf-8")),encoding="utf-8")
     (ROOT/"public/data/version.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding="utf-8")
     print("Generated",len(urls),"indexable pages;",len(terms),"glossary terms;",len(all_dams),"public dams.")
 if __name__=="__main__":main()

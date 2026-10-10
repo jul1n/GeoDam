@@ -12,3 +12,6 @@ public/sitemap*.xml
 public/robots.txt
 .test-output/
 backups/
+
+__pycache__/
+*.pyc

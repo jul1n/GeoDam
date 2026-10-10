@@ -7,22 +7,26 @@
     "dev": "wrangler dev",
     "db:local": "wrangler d1 execute geodam --local --file=schema.sql",
     "db:reset-local": "wrangler d1 execute geodam --local --command \"DELETE FROM scores\"",
-    "db:backup": "wrangler d1 export geodam --remote --output=backup.sql",
+    "db:backup": "powershell -NoProfile -File scripts/backup.ps1 -Remote",
     "db:remote": "wrangler d1 execute geodam --remote --file=schema.sql",
     "deploy": "wrangler deploy",
     "test": "node test/e2e.mjs",
     "build": "python scripts/build_public.py",
-    "predeploy": "python scripts/build_public.py --production",
+    "predeploy": "python scripts/check_data.py && python scripts/build_public.py --production --worker",
     "test:unit": "node --test test/unit.mjs",
     "data:check": "python scripts/check_data.py",
     "db:migrate:local": "wrangler d1 migrations apply geodam --local",
     "db:migrate:remote": "wrangler d1 migrations apply geodam --remote",
-    "db:backup:verified": "powershell -NoProfile -File scripts/backup.ps1"
+    "db:backup:verified": "powershell -NoProfile -File scripts/backup.ps1",
+    "test:browser": "node test/browser.mjs",
+    "test:reliability": "node test/reliability.mjs",
+    "test:hydro": "node test/hydro.mjs"
   },
   "dependencies": {
     "leaflet": "1.9.4"
   },
   "devDependencies": {
-    "wrangler": "^4"
+    "wrangler": "^4",
+    "@playwright/test": "^1.61.1"
   }
 }

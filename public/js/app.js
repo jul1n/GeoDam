@@ -19,11 +19,11 @@ const XPMUL = { easy: 1, medium: 1.5, hard: 2 };       // les niveaux difficiles
 const CONT_LABEL = { EUROPE: ["Europe", "Europe"], ASIA: ["Asie", "Asia"], AFRICA: ["Afrique", "Africa"], NAMERICA: ["Amérique du Nord", "North America"], SAMERICA: ["Amérique du Sud", "South America"], OCEANIA: ["Océanie", "Oceania"] };
 const PIN_GUESS = "#ee813c", PIN_TRUTH = "#76b861";
 
-let dams = [], map = null, stats = null;
+let dams=[],map=null,stats=null,datasetVersion="";
 let countries = [], bounds = {}, missingPool = null;
 const poolCache = new Map();                         // ISO -> barrages du pays (chargés à la demande)
 let ctx = { scope: "world", pool: [], info: S.WORLD, name: "", bounds: null };   // zone de jeu courante
-let inGame=false, activeGame=null, training=null, restoring=false;
+let inGame=false, activeGame=null, training=null, restoring=false,navigationEpoch=0;
 function persist(extra={}){
   if(!activeGame||restoring)return;
   Object.assign(activeGame,extra);
@@ -31,6 +31,7 @@ function persist(extra={}){
 }
 async function resumeGame(){
   const g=savedGame();if(!g)return;
+  if(g.datasetVersion&&g.datasetVersion!==datasetVersion){announce(tr("Les données ont été mises à jour. Commencez une nouvelle partie.","The dataset was updated. Start a new game."));clearGame();return;}
   await start(g.mode,g.training||{},g);
 }
 function restoreAnswers(g){
@@ -118,17 +119,17 @@ async function loadMissing() { if (!missingPool) missingPool = await (await fetc
 // Le mode démo (GitHub Pages) simule le serveur dans le navigateur : il a besoin des mêmes pools que le Worker.
 setResolver(async (scope) => {
   if (scope.startsWith("ct:")) { const pool = S.continentPool(dams, scope.slice(3)); return { pool, info: S.poolInfo(pool, scope), photos: await loadPhotos() }; }
-  if (scope === "world") return { pool: dams, info: S.WORLD, known: dams, missing: await loadMissing(), photos: await loadPhotos() };
+  if (scope === "world") return { pool: dams, info: S.WORLD, known:dams,stats,missing:await loadMissing(),photos:await loadPhotos() };
   const pool = await loadCountry(scope).catch(() => null);
   return pool && { pool, info: S.poolInfo(pool, scope), photos: await loadPhotos() };
 });
 
 // ---------------------------------------------------------------- carte
-function destroyMap() { if (map) { map.remove(); map = null; } }
+function destroyMap(){if(map){map.stop();map.remove();map=null;}}
 function frame(b) { if (b) map.fitBounds(b, { maxZoom: 9, padding: [8, 8] }); else map.setView([25, 10], 2); }
 function makeMap(onClick, view = ctx.bounds) {
   destroyMap();
-  map = L.map("map", { worldCopyJump: true, minZoom: 2, maxBounds: [[-85, -540], [85, 540]], keyboard: true, zoomSnap: 0.25, zoomDelta: 0.5 });
+  map = L.map("map", { worldCopyJump:true,zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false,minZoom:2, maxBounds: [[-85, -540], [85, 540]], keyboard: true, zoomSnap: 0.25, zoomDelta: 0.5 });
   frame(view);
   const relief = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}",
     { maxZoom: 12, maxNativeZoom: 8, attribution: "© Esri" }).addTo(map);
@@ -142,7 +143,7 @@ const pin = (lat, lng, color, cls = "") =>
   L.marker([lat, lng], { icon: L.divIcon({ className: "", html: `<div class="dam-pin ${cls}" style="background:${color}"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] }) });
 const boundsOfIso = (iso) => { const b = bounds[iso]; return b ? L.latLngBounds([[b[0], b[1]], [b[2], b[3]]]).pad(0.05) : null; };
 // Par défaut, un clic sur la carte valide la réponse. Le « mode sécurisé » rétablit le bouton Valider (stocké dans le navigateur).
-const safeMode = () => store.get("geodam-safe") !== "0" || !!training?.practice || matchMedia("(pointer:coarse)").matches || restoring;
+const safeMode = () => store.get("geodam-safe") !== "0" || restoring;
 const switchHtml = () => `<label class="switch" title="${esc(t("safe.hint"))}"><input type="checkbox" id="safe" ${safeMode() ? "checked" : ""}><span class="slider" aria-hidden="true"></span><span>${t("safe.label")}</span></label>`;
 const bindSafe = (onChange) => $("#safe").addEventListener("change", (e) => { store.set("geodam-safe", e.target.checked ? "1" : "0"); onChange(); });
 const hintTxt = () => (safeMode() ? t("map.hint") : t("map.hint1"));
@@ -166,13 +167,17 @@ function clueCard(d, level, shownLevel = -1, full = false) {
 
 // ---------------------------------------------------------------- navigation / routage
 function setNav(r) {
-  document.querySelectorAll("#nav a").forEach((a) => a.classList.toggle("on", a.getAttribute("href") === "#/" + r));
+  document.querySelectorAll("#nav a").forEach(a=>{
+    const active=a.getAttribute("href")==="#/"+r;a.classList.toggle("on",active);
+    if(active)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");
+  });
   $("#lang").hidden = inGame;
   $("#lang").querySelectorAll("[data-l]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.l === getLang()));
   updateInstallBtn();
 }
 const routeName = () => location.hash.replace(/^#\/?/, "");
 function route() {
+  navigationEpoch++;
   destroyMap(); inGame = false; document.body.classList.remove("playing");
   const r = routeName();
   setNav(r);
@@ -191,7 +196,7 @@ document.querySelectorAll("#nav a, #logo").forEach((a) => a.addEventListener("cl
 window.addEventListener("hashchange", route);
 
 let installEvt = null;
-const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+const isIOS=(/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))&&!window.MSStream;
 const standalone = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
 function updateInstallBtn() { $("#btn-install").hidden = standalone() || !(installEvt || isIOS) || inGame; }
 window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; updateInstallBtn(); });
@@ -207,27 +212,49 @@ $("#lang").addEventListener("click", (e) => {
 });
 
 // ---------------------------------------------------------------- accueil
-const heroSvg = () => `<svg class="hero-art" viewBox="0 0 420 260" aria-hidden="true" focusable="false">
-  <defs><linearGradient id="gw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8d9bea"/><stop offset="1" stop-color="#5e70d0"/></linearGradient></defs>
-  <circle cx="338" cy="56" r="46" fill="#ee813c" opacity=".2"/><circle cx="338" cy="56" r="30" fill="#ee813c"/>
-  <path d="M0 140 L60 92 L120 128 L200 62 L280 126 L350 96 L420 140 V260 H0Z" fill="#2a3a8c" opacity=".6"/>
-  <path d="M0 160 L80 118 L150 150 L240 104 L330 146 L420 118 V260 H0Z" fill="#1c2a78" opacity=".7"/>
-  <rect x="0" y="136" width="118" height="124" fill="url(#gw)"/>
-  <path class="wave w1" d="M-100 150 q25 -8 50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 t50 0 V260 H-100Z" fill="#b6c1f5" opacity=".5"/>
-  <path d="M112 124 H322 L352 260 H82 Z" fill="#eef0f8"/>
-  <path d="M112 124 H322 L326 150 H108Z" fill="#d6dbf3"/>
-  <g stroke="#c2c8e6" stroke-width="2"><path d="M100 176 H334"/><path d="M92 214 H342"/></g>
-  <rect x="104" y="114" width="226" height="12" rx="4" fill="#ee813c"/>
-  <g fill="#7f8fe3"><rect x="150" y="134" width="30" height="40" rx="4"/><rect x="202" y="134" width="30" height="40" rx="4"/><rect x="254" y="134" width="30" height="40" rx="4"/></g>
-  <g fill="#cfd7fb"><path class="fall" d="M153 176 h24 l8 84 h-40z"/><path class="fall f2" d="M205 176 h24 l8 84 h-40z"/><path class="fall" d="M257 176 h24 l8 84 h-40z"/></g>
-  <rect x="352" y="226" width="68" height="34" fill="#76b861"/><path d="M0 250 q120 -14 240 0 t180 -10 V260 H0Z" fill="#5fa24a" opacity=".9"/>
+const heroSvg=()=>`<svg class="hero-art dam-diagram" viewBox="0 0 420 280" role="img" aria-labelledby="dam-title dam-desc">
+  <title id="dam-title">${tr("Barrage et retenue : coupe schématique","Dam and reservoir: schematic cross-section")}</title>
+  <desc id="dam-desc">${tr("Le barrage retient l’eau en amont. Une vanne permet une restitution contrôlée à la rivière en aval. La retenue peut servir à l’irrigation, à l’alimentation en eau et à la régulation des débits.","The dam stores water upstream. A gate controls releases to the downstream river. The reservoir can support irrigation, water supply and flow regulation.")}</desc>
+  <defs>
+    <linearGradient id="dam-water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a5c8ee"/><stop offset="1" stop-color="#537bb9"/></linearGradient>
+    <clipPath id="dam-reservoir"><path d="M0 114 Q22 111 44 114 T88 114 T132 114 T176 114 V235 H0Z"/></clipPath>
+  </defs>
+  <text class="dam-caption" x="8" y="20">${tr("Barrage et retenue · coupe schématique","Dam and reservoir · schematic cross-section")}</text>
+  <circle cx="364" cy="64" r="36" fill="#ee813c" opacity=".16"/><circle cx="364" cy="64" r="24" fill="#ee813c"/>
+  <path d="M0 157 L63 79 L107 115 L155 57 L201 122 L241 91 L292 156 V260 H0Z" fill="#354692" opacity=".65"/>
+  <path d="M0 184 L58 138 L117 164 L169 111 L250 172 L326 123 L420 177 V260 H0Z" fill="#1a2a71" opacity=".55"/>
+  <path d="M0 235 Q101 221 175 235 H285 Q307 220 336 235 H420 V260 H0Z" fill="#76b861"/>
+  <rect x="0" y="106" width="176" height="129" fill="url(#dam-water)" clip-path="url(#dam-reservoir)"/>
+  <path d="M0 114 Q22 111 44 114 T88 114 T132 114 T176 114" fill="none" stroke="#d7eaff" stroke-width="2"/>
+  <text class="dam-label" x="22" y="99">${tr("Retenue amont","Upstream reservoir")}</text>
+  <path d="M175 83 H211 L277 235 H175Z" fill="#eef0f8" stroke="#c2c8e6" stroke-width="2"/>
+  <path d="M184 93 H205 L267 229 H184Z" fill="#dce1f2"/>
+  <rect x="170" y="76" width="48" height="10" rx="3" fill="#ee813c"/>
+  <text class="dam-label" x="180" y="62">${tr("Barrage","Dam")}</text>
+  <path d="M200 67 V75" stroke="#dfe8ff" stroke-width="1.5"/>
+  <path d="M309 233 Q337 228 359 233 T420 233 V260 H303Z" fill="url(#dam-water)"/>
+  <path d="M155 200 H272" fill="none" stroke="#243461" stroke-width="16"/>
+  <path d="M155 200 H272" fill="none" stroke="#69b3de" stroke-width="9"/>
+  <path class="dam-flow" d="M155 200 H272" fill="none" stroke="#d9f3ff" stroke-width="3" stroke-dasharray="6 15"/>
+  <rect x="151" y="189" width="7" height="22" rx="2" fill="#dce1f2"/>
+  <path d="M150 192 H159 M150 198 H159 M150 204 H159 M150 209 H159" stroke="#243461" stroke-width="2"/>
+  <rect x="236" y="180" width="7" height="19" rx="1" fill="#ee813c"/>
+  <path d="M239 180 V168 M233 168 H245" stroke="#243461" stroke-width="3"/>
+  <text class="dam-label dam-dark" x="190" y="157">${tr("Vanne","Gate")}</text>
+  <path d="M221 159 L237 166" fill="none" stroke="#40517b" stroke-width="1.5"/>
+  <path d="M272 200 Q294 200 304 219 T333 235 H420" fill="none" stroke="#69b3de" stroke-width="9" stroke-linecap="round"/>
+  <path class="dam-flow" d="M272 200 Q294 200 304 219 T333 235 H420" fill="none" stroke="#d9f3ff" stroke-width="3" stroke-dasharray="6 15"/>
+  <text class="dam-label" x="279" y="172">${tr("Restitution contrôlée","Controlled release")}</text>
+  <path d="M301 178 L281 193" fill="none" stroke="#dfe8ff" stroke-width="1.5"/>
+  <text class="dam-label" x="338" y="274">${tr("Rivière aval","Downstream")}</text>
+  <path d="M375 231 l8 4 -8 4" fill="none" stroke="#d9f3ff" stroke-width="2"/>
 </svg>`;
 
 function profileCard() {
   const lv = P.level(), p = P.get();
   return `<section class="panel profile strip" aria-label="${t("prof.title")}">
     <div class="lvl"><span class="lvl-n">${t("prof.level", { n: lv.n + 1 })}</span><b>${esc(t("lvl." + lv.n))}</b></div>
-    <div class="xpbar" role="progressbar" aria-valuenow="${lv.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${lv.pct}%"></i></div>
+    <div class="xpbar" role="progressbar" aria-label="${esc(t("prof.title"))}" aria-valuenow="${lv.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${lv.pct}%"></i></div>
     <small class="muted">${t("prof.next", { x: fmt(lv.xp), y: fmt(lv.hi) })}${p.streak ? " · " + t("prof.streak", { n: p.streak }) : ""}</small>
     <div class="badges" role="list">${Object.entries(P.BADGES).map(([k, icon]) => `<span role="listitem" class="badge ${p.badges.includes(k) ? "on" : ""}" title="${esc(t("bd." + k))} — ${esc(t("bd." + k + ".d"))}"><i aria-hidden="true">${icon}</i><span class="sr">${esc(t("bd." + k))}</span></span>`).join("")}</div></section>`;
 }
@@ -313,14 +340,15 @@ function gain(ev) {
   r.badges.forEach((b) => toast(t("toast.badge", { name: t("bd." + b) }), "good"));
   return r.xp;
 }
-async function finishGame(mode, token, payload, o) {
+async function finishGame(mode,token,payload,o){
+  const game=activeGame,practice=!!game?.training?.practice,gameScope=game?.scope||ctx.scope;
   const box = document.createElement("div");
   box.className = "panel result end"; box.textContent = t("end.calc");
   $("#end").replaceChildren(box);
   persist({phase:"finished"});
   let res;
   try{
-    if(training?.practice)res={...(o.localScore?o.localScore():S.dailyScore(ctx.pool,activeGame.session.seed,payload.guesses,ctx.info)),qualifies:false,rank:null,practice:true};
+    if(practice)res={...(o.localScore?o.localScore():S.dailyScore(ctx.pool,activeGame.session.seed,payload.guesses,ctx.info)),qualifies:false,rank:null,practice:true};
     else res=await api("finish",{token,...payload});
   }
   catch(e){
@@ -332,12 +360,12 @@ async function finishGame(mode, token, payload, o) {
   box.innerHTML = `${o.summary(res)}<div class="bigscore"><span id="bs">0</span><small>pts</small></div>
     <p class="rankline">${t("end.valid", { s: fmt(res.score), r: res.rank })}</p><div id="comm"></div><div id="xpline"></div>`;
   if(res.practice)box.querySelector(".rankline").textContent=tr("Résultat d’entraînement · aucun classement partagé","Practice result · no shared leaderboard");
-  clearGame();
-  if(mode==="mission"&&!training?.practice)P.trackMission(token);
+  if(activeGame?.session.token===token)clearGame();
+  if(mode==="mission"&&!practice)P.trackMission(token);
   announce(tr("Partie terminée. Score : ","Game complete. Score: ")+res.score);
   countUp($("#bs", box), res.score, 1100, fmt);
   if (res.rank <= 3 || (o.celebrate && o.celebrate(res))) confetti(res.rank === 1 ? 220 : 120);
-  const xp = gain({ id:token, game: 1, scope: ctx.scope, xp: o.xp(res), ...(o.award ? o.award(res) : {}) });
+  const xp = gain({ id:token, game: 1, scope:gameScope, xp: o.xp(res), ...(o.award ? o.award(res) : {}) });
   $("#xpline", box).innerHTML = `<p class="xp">⭐ ${t("toast.xp", { n: xp })}</p>`;
   if (o.community) o.community(res, $("#comm", box));
   if (o.share) box.insertAdjacentHTML("beforeend", `<div class="row"><button class="ghost" id="share">${t("end.copy")}</button></div>`);
@@ -367,6 +395,7 @@ async function finishGame(mode, token, payload, o) {
 }
 
 async function start(mode,options={},resume=null) {
+  const startup=++navigationEpoch;
   training=options;
   if(training.revision)setWorld();
   if(!navigator.onLine&&mode==="map")training={...options,practice:true};
@@ -381,7 +410,8 @@ async function start(mode,options={},resume=null) {
     if(resume)await selectScope(resume.scope);
     if(mode==="map"&&training.revision&&!ctx.pool.some(d=>P.mistakes().includes(d.id)))throw new Error(tr("Aucun barrage à réviser dans cette zone.","No dams to review in this area."));
     const sess=resume?.session || (training.practice?{token:"practice:"+crypto.randomUUID(),seed:crypto.randomUUID(),scope:ctx.scope,mode}:await api("session",{mode,scope:ctx.scope,level}));
-    activeGame=resume?{...resume}:{mode,scope:ctx.scope,level,training,session:sess,guesses:[],evidence:[],revisionIds:training.revision?P.mistakes():[],phase:"next",date:Date.now()};
+    if(startup!==navigationEpoch)return;
+    activeGame=resume?{...resume}:{datasetVersion,mode,scope:ctx.scope,level,training,session:sess,guesses:[],evidence:[],revisionIds:training.revision?P.mistakes():[],phase:"next",date:Date.now()};
     persist();
     ({ map: (x) => playMap(x, level), daily: playDaily, mission: playMission })[mode](sess);
     bindZone(mode);
@@ -438,7 +468,7 @@ function playMap({ token, seed }, level = "hard") {
     $("#side").innerHTML = sideCard(d) +
       `<div class="hintbar"><button class="ghost" id="hint" ${hints >= S.MAX_HINTS || locked ? "disabled" : ""}>${hints >= S.MAX_HINTS ? t("hint.none") : t("hint.btn")}</button>
        <small class="muted">${hints ? t("hint.used", { n: hints, p: (training?.practice?0:hints * 10) }) : t("hint.left", { n: S.MAX_HINTS })}</small></div><p class="muted small">${hintTxt()}</p>`;
-    if(training?.practice)$("#side .hintbar small").textContent=tr("Indices gratuits en entraînement","Free hints in practice");
+    if(training?.practice){$("#side .hintbar small").textContent=tr("Indices gratuits en entraînement","Free hints in practice");if(hints<S.MAX_HINTS)$("#hint").textContent=tr("💡 Indice gratuit","💡 Free hint");}
     shown = hints;
     $("#hint").addEventListener("click", () => { hints++; persist({hints}); side(); });
   };
@@ -600,8 +630,8 @@ function boot() {
   applyStatic(); setLogo();
   if (DEMO) $("#demo-banner").hidden = false;
   setupConnectivity();setupUpdates();
-  Promise.all([fetch("data/dams.json").then((r) => r.json()), fetch("data/countries.json").then((r) => r.json()), fetch("data/stats.json").then((r) => r.json()).catch(() => null), loadPhotos().catch(() => null)])
-    .then(([d, c, s]) => { dams = d; countries = c; stats = s; setWorld(); route(); })
+  Promise.all([fetch("data/dams.json").then((r) => r.json()), fetch("data/countries.json").then((r) => r.json()), fetch("data/stats.json").then((r) => r.json()).catch(() => null), loadPhotos().catch(() => null),fetch("data/version.json").then(r=>r.json()).catch(()=>null)])
+    .then(([d,c,s,photos,version])=>{datasetVersion=version?.fingerprint||version?.version||"";dams=d; countries = c; stats = s; setWorld(); route(); })
     .catch(() => { app.innerHTML = `<p class="err">${t("data.err")}</p>`; });
 }
 boot();
