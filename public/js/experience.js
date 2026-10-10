@@ -67,14 +67,14 @@ export function homeExtras(app,{start,resume,selectScope,dams,api}){
   app.querySelector(".landing-games")?.append(intro);
   intro.querySelector("button").onclick=()=>start("map",{practice:true,tutorial:true});
   if(g){const saved=el.querySelector('[data-action="resume"]');const row=saved?.closest('.row');if(row)intro.append(row);}
-  el.addEventListener("click",async e=>{
+  const onClick=async e=>{
     const action=e.target.closest("[data-action]")?.dataset.action;
     if(action==="tutorial")start("map",{practice:true,tutorial:true});
     if(action==="practice")start("map",{practice:true});
     if(action==="revise")start("map",{practice:true,revision:true});
     if(action==="mission")start("mission");
     if(action==="resume")resume();
-    if(action==="discard"){clearGame();el.querySelector('[data-action="resume"]')?.remove();e.target.remove();}
+    if(action==="discard"){clearGame();app.querySelector('[data-action="resume"]')?.remove();e.target.remove();}
     if(action==="export"){const blob=new Blob([P.exportProfile()],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="geodam-profile.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
     if(action==="status"){
       const box=el.querySelector(".contribution-status");box.textContent=tr("Chargement…","Loading…");
@@ -93,7 +93,8 @@ export function homeExtras(app,{start,resume,selectScope,dams,api}){
     }
     const journey=e.target.closest("[data-journey]")?.dataset.journey;
     if(journey){await selectScope("ct:"+journey);start("map",{practice:true});}
-  });
+  };
+  el.addEventListener("click",onClick);intro.addEventListener("click",onClick);
   el.querySelector('input[type="file"]').onchange=async e=>{
     const file=e.target.files[0];if(!file)return;
     try{if(file.size>1000000)throw new Error();P.importProfile(await file.text());toast(tr("Profil restauré","Profile restored"));location.reload();}
@@ -123,6 +124,6 @@ export async function setupUpdates(){
         reg.waiting.postMessage({type:"ACTIVATE_UPDATE"});};
     };
     offer();reg.addEventListener("updatefound",()=>reg.installing?.addEventListener("statechange",offer));
-    let refreshing=false;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(refreshing)return;refreshing=true;location.reload();});
+    let refreshing=false;const hadController=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(refreshing||!hadController)return;refreshing=true;location.reload();});
   }catch{}
 }

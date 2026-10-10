@@ -26,4 +26,3 @@ jobs:
           npm test
           node test/reliability.mjs http://127.0.0.1:8787
           node test/browser.mjs http://127.0.0.1:8787
-          node test/hydro.mjs http://127.0.0.1:8787

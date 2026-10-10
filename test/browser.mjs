@@ -11,9 +11,10 @@ const context=await browser.newContext({viewport:{width:390,height:844},isMobile
 const page=await context.newPage(),errors=[];
 page.on("pageerror",e=>errors.push(e.stack||e.message));
 mkdirSync(".test-output",{recursive:true});
+const openTools=async()=>{if(!(await page.locator(".profile-details").getAttribute("open")!==null))await page.locator(".profile-details > summary").click();};
 try{
   await page.goto(base+"/?demo=1");
-  await page.locator('[data-action="tutorial"]').waitFor();
+  await page.locator('[data-intro-tutorial]').waitFor();
   await page.evaluate(()=>{
     document.querySelector('[data-mode="map"]').click();
     document.querySelector('#nav a[href="#/about"]').click();
@@ -22,7 +23,7 @@ try{
   await page.waitForTimeout(200);
   assert.equal(await page.locator("#legal").count(),1,"abandoned game startup must not overwrite navigation");
   await page.getByRole("link",{name:"Jouer",exact:true}).click();
-  await page.locator('[data-action="tutorial"]').click();
+  await page.locator('[data-intro-tutorial]').click();
   await page.locator("#ctr").click();
   assert.equal(await page.locator("#ok").isVisible(),true);
   await page.locator("#ok").click();
@@ -30,7 +31,7 @@ try{
   await page.locator(".bigscore").waitFor();
   assert.match(await page.locator(".rankline").textContent(),/entraînement/);
   await page.locator("#tohome").click();
-  await page.locator('[data-action="practice"]').click();
+  await openTools();await page.locator('[data-action="practice"]').click();
   await page.locator("#ctr").click();
   await page.locator("#ok").click();
   await page.locator("#next").click();
@@ -52,7 +53,7 @@ try{
   await page.locator("#ok").click();
   await page.locator("#next").click();
   await page.getByRole("link",{name:"Jouer",exact:true}).click();
-  await page.locator('[data-action="practice"]').waitFor();
+  await openTools();await page.locator('[data-action="practice"]').waitFor();
   // Tab widgets use roving focus.
   const tabs=page.locator('[role="tablist"]').first();
   assert.equal(await tabs.locator('button[tabindex="0"]').count(),1);
@@ -60,10 +61,10 @@ try{
   await page.keyboard.press("ArrowRight");
   assert.equal(await tabs.locator('button[tabindex="0"]').count(),1);
   await page.evaluate(()=>navigator.serviceWorker.ready);
-  await page.reload();await page.locator('[data-action="practice"]').waitFor();
+  await page.reload();await openTools();await page.locator('[data-action="practice"]').waitFor();
   await context.setOffline(true);
   await page.reload();
-  await page.locator('[data-action="practice"]').click();
+  await openTools();await page.locator('[data-action="practice"]').click();
   await page.locator("#ctr").click();await page.locator("#ok").click();await page.locator("#next").click();
   assert.match(await page.locator("#connection").textContent(),/Hors connexion/);
   await context.setOffline(false);

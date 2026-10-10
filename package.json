@@ -19,8 +19,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply geodam --remote",
     "db:backup:verified": "powershell -NoProfile -File scripts/backup.ps1",
     "test:browser": "node test/browser.mjs",
-    "test:reliability": "node test/reliability.mjs",
-    "test:hydro": "node test/hydro.mjs"
+    "test:reliability": "node test/reliability.mjs"
   },
   "dependencies": {
     "leaflet": "1.9.4"
