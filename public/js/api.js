@@ -32,6 +32,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const SAMPLE = {   // joueurs fictifs pour que le classement ne soit pas vide en démo
   map: [["Hydro_Hugo", 21840], ["Crête_Clara", 19260], ["Turbine_Tom", 16410], ["Volta_Victor", 12975]],
   daily: [["Crête_Clara", 5000], ["Hydro_Hugo", 4300], ["Barrage_Betty", 3600], ["Turbine_Tom", 2200]],
+  photo: [["Crête_Clara", 19860], ["Hydro_Hugo", 17240], ["Barrage_Betty", 12410], ["Turbine_Tom", 9030]],
   mission: [["Cartographe_Léa", 10780], ["Hydro_Hugo", 9120], ["Crête_Clara", 8260], ["Volta_Victor", 5410]],
 };
 const boardKey = (sc, m, p) => `${sc}|${m}|${p}`;
@@ -51,6 +52,7 @@ async function demo(path, body) {
     let res;
     if (sess.m === "map") res = S.mapScore(zone.pool, sess.seed, body.guesses, zone.info);
     else if (sess.m === "daily") res = S.dailyScore(zone.pool, sess.seed, body.guesses, zone.info);
+    else if (sess.m === "photo") res = S.mapScore(zone.photos, sess.seed, body.guesses, S.WORLD);
     else if (sess.m === "mission") res = S.missionScore(zone.known, zone.missing, sess.seed, body.guesses);
     if (!res) throw fail("invalid_game");
     let community = null;

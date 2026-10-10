@@ -224,3 +224,21 @@ dialog.sheet .close { position: absolute; top: 12px; right: 12px; min-height: 36
 .zone select { font: inherit; font-size: .9rem; font-weight: 700; padding: 6px 14px; min-height: 36px; border-radius: 999px; border: 2px solid #cfd5ea; background: #fff; color: var(--navy); max-width: 220px; cursor: pointer; }
 .zone select:focus-visible { border-color: var(--brand); }
 .rules summary { font-weight: 800; color: var(--navy); cursor: pointer; } .rules ol { margin: 8px 0 0; padding-left: 20px; } .rules li { margin: 4px 0; font-size: .92rem; }
+
+/* mode photo, logo ICOLD */
+.photo-frame { position: relative; border-radius: 12px; overflow: hidden; background: #dfe4f5; aspect-ratio: 4 / 3; margin-bottom: 10px; }
+.photo-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-frame .broken-msg { display: none; position: absolute; inset: 0; place-items: center; color: var(--muted); font-weight: 700; }
+.photo-frame.broken .broken-msg { display: grid; } .photo-frame.broken img { display: none; }
+.credit { font-size: .75rem; color: var(--muted); margin: 6px 0 0; } .credit a { color: var(--brand-dark); }
+.clue.photo dl { margin-top: 6px; }
+@media (min-width: 861px) { .game.photo, body.playing .game.photo { grid-template-columns: minmax(340px, 36vw) 1fr; } }
+.foot-row { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; } .foot-row p { margin: 0; } .foot-row img { display: block; border-radius: 50%; }
+.icold-row { display: flex; align-items: center; gap: 16px; } .icold-row p { margin: 0; } .logo-icold { border-radius: 50%; flex: none; box-shadow: 0 2px 10px rgba(17,26,76,.2); } .logo-icold.sm { width: 56px; height: 56px; }
+
+/* barrage du jour : cartes d'indices (débloqués / verrouillés) */
+ol.cluelist { list-style: none; padding: 0; margin: 8px 0 0; }
+.clue-card { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 12px; background: #eef1fc; margin: 6px 0; border-bottom: none !important; }
+.clue-card .num { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: .8rem; }
+.clue-card.locked { background: #f3f4f8; opacity: .75; } .clue-card.locked .num { background: #c9cfe6; font-size: .7rem; }
+.clue-photo { display: block; width: 100%; max-width: 360px; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; margin-top: 6px; }

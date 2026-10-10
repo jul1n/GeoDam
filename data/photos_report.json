@@ -1,0 +1,30 @@
+{
+  "candidats": 1090,
+  "retenus": 600,
+  "ecartes": {
+    "licence": 9,
+    "meta": 0
+  },
+  "pays": 98,
+  "rapproches_registre": 518,
+  "licences": {
+    "CC BY-SA 2.0 de": 1,
+    "CC BY-SA 3.0": 213,
+    "Public domain": 157,
+    "CC BY 2.0": 24,
+    "Attribution": 1,
+    "CC BY-SA 2.5": 8,
+    "CC BY-SA 4.0": 126,
+    "CC BY 3.0": 29,
+    "CC BY-SA 2.0": 13,
+    "CC BY 3.0 br": 2,
+    "CC0": 7,
+    "CC BY-SA 1.0": 2,
+    "CC BY 2.5": 6,
+    "CC BY 4.0": 7,
+    "CC BY-SA 3.0 de": 1,
+    "CC BY 2.5 au": 1,
+    "CC BY-SA 3.0 nl": 1,
+    "CC BY-SA 3.0 igo": 1
+  }
+}

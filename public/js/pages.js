@@ -74,7 +74,7 @@ const $ = (s, el = document) => el.querySelector(s);
 
 // ---------------------------------------------------------------- Le registre en chiffres
 export async function renderRegister(el, { api, startMission, dams, pools }) {
-  el.innerHTML = `<section class="page"><h1>${t("reg.title")}</h1><p class="lead">${t("reg.lead")}</p><div class="panel" id="exp"></div><div id="regbody" class="panel">…</div><p class="muted">${t("reg.note")}</p></section>`;
+  el.innerHTML = `<section class="page"><h1>${t("reg.title")}</h1><div class="icold-row"><a href="https://www.icold-cigb.org/" target="_blank" rel="noopener"><img class="logo-icold sm" src="img/logo-icold.png" alt="ICOLD · CIGB" width="64" height="64"></a><p class="lead">${t("reg.lead")}</p></div><div class="panel" id="exp"></div><div id="regbody" class="panel">…</div><p class="muted">${t("reg.note")}</p></section>`;
   exploreBlock($("#exp", el), { dams, pools });
   let s;
   try { s = await (await fetch("data/stats.json")).json(); } catch { $("#regbody", el).textContent = t("err.net"); return; }
@@ -179,9 +179,9 @@ export function renderGlossary(el) {
 export function renderAbout(el, { demo }) {
   const brief = [[1, "ok"], [2, "ok"], [3, "ok", "3n"], [4, "ok"], [5, "part"], [6, "ok", "6n"], [7, "no", "7n"], [8, "part", "8n"], [9, "part", "9n"]];
   el.innerHTML = `<section class="page"><h1>${t("about.title")}</h1><div class="panel"><p>${t("about.p1")}</p>
-    <h2>${t("about.icold")}</h2><p>${t("about.icoldtxt")}</p><h2>${t("about.data")}</h2><p>${t("about.datatxt")}</p></div>
+    <h2>${t("about.icold")}</h2><div class="icold-row"><img class="logo-icold" src="img/logo-icold.png" alt="ICOLD · CIGB" width="96" height="96"><p>${t("about.icoldtxt")}</p></div><h2>${t("about.data")}</h2><p>${t("about.datatxt")}</p></div>
     <div class="panel"><h2>${t("about.brief")}</h2><p class="muted">${t("about.brief.lead")}</p>
     <ul class="brief">${brief.map(([n, st, note]) => `<li><span class="pill ${st}">${t("brief." + st)}</span><div><b>${t("brief." + n)}</b>${note ? `<br><small>${t("brief." + note)}</small>` : ""}</div></li>`).join("")}</ul></div>
     <div class="panel" id="legal"><h1 class="h2">${t("legal.title")}</h1><h2>${t("legal.who")}</h2><p>${t("legal.whotxt")}</p>
-    <h2>${t("legal.data")}</h2><p>${t("legal.datatxt")}</p><h2>${t("legal.host")}</h2><p>${t("legal.hosttxt")}</p>${demo ? `<p class="notice">${t("legal.demo")}</p>` : ""}</div></section>`;
+    <h2>${t("legal.data")}</h2><p>${t("legal.datatxt")}</p><h2>${t("legal.host")}</h2><p>${t("legal.hosttxt")}</p><h2>${t("legal.photos.h")}</h2><p>${t("legal.photos")}</p>${demo ? `<p class="notice">${t("legal.demo")}</p>` : ""}</div></section>`;
 }

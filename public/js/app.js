@@ -11,8 +11,8 @@ const store = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
   set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* navigation privée */ } },
 };
-const MODES = ["map", "daily", "mission"];
-const ICON = { map: "🗺️", daily: "📅", mission: "🛰️" };
+const MODES = ["map", "photo", "daily", "mission"];
+const ICON = { map: "🗺️", photo: "📷", daily: "📅", mission: "🛰️" };
 const CONT_LABEL = { EUROPE: ["Europe", "Europe"], ASIA: ["Asie", "Asia"], AFRICA: ["Afrique", "Africa"], NAMERICA: ["Amérique du Nord", "North America"], SAMERICA: ["Amérique du Sud", "South America"], OCEANIA: ["Océanie", "Oceania"] };
 const PIN_GUESS = "#ee813c", PIN_TRUTH = "#76b861";
 
@@ -59,7 +59,7 @@ function zoneSelect() {
   const sel = (v) => (ctx.scope === v ? " selected" : "");
   const cs = [...countries].sort((a, b) => cname(a).localeCompare(cname(b), getLang()));
   return `<label class="zone"><span class="sr">${t("zone.label")}</span><select id="zone" aria-label="${esc(t("zone.label"))}">
-    <option value="world"${sel("world")}>🌍 ${t("scope.world")}</option>
+    <option value="world"${sel("world")}>${t("scope.world")}</option>
     <optgroup label="${esc(t("zone.continents"))}">${Object.keys(S.CONTINENTS).map((k) => `<option value="ct:${k}"${sel("ct:" + k)}>${esc(contName(k))}</option>`).join("")}</optgroup>
     <optgroup label="${esc(t("zone.countries"))}">${cs.map((c) => `<option value="${c.iso}"${sel(c.iso)}>${esc(cname(c))}</option>`).join("")}</optgroup></select></label>`;
 }
@@ -68,12 +68,14 @@ function bindZone(mode) {
     try { await selectScope(e.target.value); start(mode); } catch { e.target.value = ctx.scope; }
   });
 }
+let photosPool = null;
+const loadPhotos = async () => (photosPool ??= await (await fetch("data/photos.json")).json());
 async function loadMissing() { if (!missingPool) missingPool = await (await fetch("data/missing.json")).json(); return missingPool; }
 
 // Le mode démo (GitHub Pages) simule le serveur dans le navigateur : il a besoin des mêmes pools que le Worker.
 setResolver(async (scope) => {
   if (scope.startsWith("ct:")) { const pool = S.continentPool(dams, scope.slice(3)); return { pool, info: S.poolInfo(pool, scope) }; }
-  if (scope === "world") return { pool: dams, info: S.WORLD, known: dams, missing: await loadMissing() };
+  if (scope === "world") return { pool: dams, info: S.WORLD, known: dams, missing: await loadMissing(), photos: await loadPhotos() };
   const pool = await loadCountry(scope).catch(() => null);
   return pool && { pool, info: S.poolInfo(pool, scope) };
 });
@@ -191,7 +193,7 @@ const quickHtml = (modes) => `<div class="row"><button class="cta-main" data-mod
 function home() {
   inGame = false; setNav(""); document.body.classList.remove("playing");
   if (inWorld()) setWorld(); else if (ctx.scope.startsWith("ct:")) ctx.name = contName(ctx.scope.slice(3)); else ctx.name = cname(countries.find((c) => c.iso === ctx.iso));
-  const modes = inWorld() ? MODES : MODES.filter((m) => m !== "mission");
+  const modes = inWorld() ? MODES : MODES.filter((m) => m !== "mission" && m !== "photo");
   const list = allScopes().sort((a, b) => cname(a).localeCompare(cname(b), getLang()));
   const total = stats?.total ?? 62362, geo = stats?.geo ?? 42095;
   app.innerHTML = `
@@ -295,25 +297,41 @@ async function finishGame(mode, token, payload, o) {
 }
 
 async function start(mode) {
-  if (mode === "mission" && !inWorld()) setWorld();
+  if ((mode === "mission" || mode === "photo") && !inWorld()) setWorld();
   if (routeName()) history.replaceState(null, "", "#/");
   inGame = true; setNav(""); document.body.classList.add("playing");
   app.innerHTML = `<p class="muted">${t("prep")}</p>`;
   try {
+    if (mode === "photo") await loadPhotos();
+    if (mode === "daily") await loadPhotos().catch(() => {});   // le dernier indice est une photo, quand elle existe
     if (mode === "mission") await Promise.all([loadMissing(), fetch("data/bounds.json").then((r) => r.json()).then((b) => { bounds = b; })]);
     const sess = await api("session", { mode, scope: ctx.scope });
-    ({ map: playMap, daily: playDaily, mission: playMission })[mode](sess);
+    ({ map: (x) => playMap(x), photo: (x) => playMap(x, true), daily: playDaily, mission: playMission })[mode](sess);
     bindZone(mode);
   } catch (e) { inGame = false; app.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
   window.scrollTo({ top: 0 });
 }
 
+// ---------------------------------------------------------------- Mode « photo » : même mécanique que la carte muette, avec une vraie photo
+const asDam = (d) => ({ ...d.reg, id: d.id, n: d.n, la: d.la, lo: d.lo, iso: d.iso, c: d.c, ce: d.ce, ct: d.ct });
+const creditHtml = (d) => `<p class="credit">📷 ${esc(d.a || "?")} · <a href="${esc(d.page)}" target="_blank" rel="noopener">${esc(d.lic)}</a> · Wikimedia Commons</p>`;
+function photoCard(d, level, shownLevel = -1) {
+  const r = d.reg || {}, km = (v, u) => (v ? `${fmt(v)} ${u}` : null);
+  const rows = [
+    level >= 1 && [t("clue.continent"), d.ct && contLabel(d), 1], level >= 2 && [t("clue.country"), countryOf(d), 2],
+    level >= 3 && [t("photo.name"), d.n, 3], level >= 3 && [t("clue.height"), km(r.h, "m"), 3], level >= 3 && [t("clue.year"), r.y, 3], level >= 3 && [t("clue.river"), r.r, 3],
+  ].filter((x) => x && x[1]);
+  return `<div class="panel clue photo"><div class="photo-frame"><img src="${esc(d.img)}" alt="${esc(t("photo.alt"))}" referrerpolicy="no-referrer" onerror="this.closest('.photo-frame').classList.add('broken')"><span class="broken-msg">${t("photo.broken")}</span></div>
+    ${rows.length ? `<dl>${rows.map(([k, v, lv]) => `<dt>${k}</dt><dd${shownLevel >= 0 && lv > shownLevel ? ' class="new"' : ""}>${esc(v)}</dd>`).join("")}</dl>` : `<p class="muted small">${t("photo.who")}</p>`}
+    <p class="credit">📷 ${esc(d.a || "?")} · ${esc(d.lic)}</p></div>`;
+}
+
 // ---------------------------------------------------------------- Mode 1 : carte muette (avec indices payants)
-function playMap({ token, seed }) {
-  const { pool, info } = ctx, idx = S.pickMapRounds(pool, seed, info.distinct), guesses = [], recap = [];
+function playMap({ token, seed }, photo = false) {
+  const { pool, info } = photo ? { pool: photosPool, info: S.WORLD } : ctx, idx = S.pickMapRounds(pool, seed, info.distinct), guesses = [], recap = [];
   let round = 0, total = 0, guess = null, layers = [], locked = false, lockedAt = 0, hints = 0, shown = 0;
-  app.innerHTML = `<div class="hud"><span id="rd"></span><span class="hud-tools">${zoneSelect()}${switchHtml()}</span><span id="sc"></span></div>
-    <div class="game"><div id="side"></div><div><div id="map"></div><p class="muted small" id="kbd">${t("map.centerhint")}</p>
+  app.innerHTML = `<div class="hud"><span id="rd"></span><span class="hud-tools">${photo ? "" : zoneSelect()}${switchHtml()}</span><span id="sc"></span></div>
+    <div class="game${photo ? " photo" : ""}"><div id="side"></div><div><div id="map"></div><p class="muted small" id="kbd">${t("map.centerhint")}</p>
     <div class="row actions"><button id="ctr" class="ghost">${t("map.center")}</button><button id="ok" disabled>${t("map.validate")}</button><button id="next" class="accent" hidden></button></div></div></div><div id="end"></div>`;
   const place = (lat, lng) => {
     if (locked) { if (!safeMode() && Date.now() - lockedAt >= 2000) $("#next").click(); return; }   // 2e clic, 2 s après : manche suivante
@@ -324,7 +342,7 @@ function playMap({ token, seed }) {
   $("#ctr").addEventListener("click", () => { const c = map.getCenter(); place(c.lat, S.wrapLng(c.lng)); });
   const side = () => {
     const d = pool[idx[round]];
-    $("#side").innerHTML = clueCard(d, hints, shown) +
+    $("#side").innerHTML = (photo ? photoCard(d, hints, shown) : clueCard(d, hints, shown)) +
       `<div class="hintbar"><button class="ghost" id="hint" ${hints >= S.MAX_HINTS || locked ? "disabled" : ""}>${hints >= S.MAX_HINTS ? t("hint.none") : t("hint.btn")}</button>
        <small class="muted">${hints ? t("hint.used", { n: hints, p: hints * 10 }) : t("hint.left", { n: S.MAX_HINTS })}</small></div><p class="muted small">${hintTxt()}</p>`;
     shown = hints;
@@ -342,9 +360,9 @@ function playMap({ token, seed }) {
     recap.push({ n: d.n, km, pts, hints });
     layers.push(pin(d.la, d.lo, PIN_TRUTH, "pulse").addTo(map), L.polyline([guess, [d.la, d.lo]], { color: "#111a4c", dashArray: "6 6", weight: 2 }).addTo(map));
     map.fitBounds(L.latLngBounds([guess, [d.la, d.lo]]).pad(0.5), { maxZoom: 7 });
-    $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">${reactFor(base)}</div><div class="where">${flag(d, "big")}<div><b>${esc(countryOf(d))}</b>${multi() || !(d.s || d.ci) ? "" : `<br><span class="muted">${esc(d.s || d.ci)}</span>`}</div></div>${t("map.dist", { km: fmt(km) })}
-      <div class="pts-line">+<span id="rp">0</span>${hints ? ` <small>(−${hints * 10} %)</small>` : ""}</div>${factsHtml(d)}<button class="ghost" id="sheetbtn">${t("sheet.open")}</button>${safeMode() ? "" : `<p class="muted small">${t("map.next2")}</p>`}</div>`);
-    countUp($("#rp"), pts, 700, fmt); $("#sheetbtn").addEventListener("click", () => openSheet(d));
+    $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">${reactFor(base)}</div><div class="where">${flag(d, "big")}<div><b>${esc(countryOf(d))}</b>${photo ? `<br><span class="muted">${esc(d.n)}</span>` : ""}${multi() || !(d.s || d.ci) ? "" : `<br><span class="muted">${esc(d.s || d.ci)}</span>`}</div></div>${t("map.dist", { km: fmt(km) })}
+      <div class="pts-line">+<span id="rp">0</span>${hints ? ` <small>(−${hints * 10} %)</small>` : ""}</div>${photo ? creditHtml(d) : factsHtml(d)}${!photo || d.reg ? `<button class="ghost" id="sheetbtn">${t("sheet.open")}</button>` : ""}${safeMode() ? "" : `<p class="muted small">${t("map.next2")}</p>`}</div>`);
+    countUp($("#rp"), pts, 700, fmt); $("#sheetbtn")?.addEventListener("click", () => openSheet(photo ? asDam(d) : d));
     if (base >= 4800) confetti(80);
     $("#sc").textContent = t("map.score", { s: fmt(total) });
     $("#next").hidden = false; $("#next").textContent = round === S.MAP_ROUNDS - 1 ? t("map.last") : t("map.next"); $("#next").focus();
@@ -354,7 +372,7 @@ function playMap({ token, seed }) {
     if (round < S.MAP_ROUNDS) return render();
     $("#next").hidden = true; $("#kbd").hidden = true;
     const eagle = recap.filter((r) => r.km < 10).length, perfect = recap.some((r) => r.pts >= 5000);
-    finishGame("map", token, { guesses }, {
+    finishGame(photo ? "photo" : "map", token, { guesses }, {
       summary: () => `<h2>${t("map.over")}</h2><ol class="recap">${recap.map((r) => `<li><b>${esc(r.n)}</b> <span>${fmt(r.km)} km${r.hints ? " 💡" + r.hints : ""}</span> <em>${fmt(r.pts)}</em></li>`).join("")}</ol>`,
       xp: (r) => Math.round(r.score / 1000), award: () => ({ eagle, perfect: perfect ? 1 : 0 }), celebrate: (r) => r.score >= 20000,
     });
@@ -371,7 +389,7 @@ function playDaily({ token, seed }) {
     $("#tohome2").addEventListener("click", () => route());
     showLeaderboard("daily", $("#lb")); return;
   }
-  const guesses = [], ch = [];
+  const guesses = [], ch = [], photoClue = photosPool?.find((x) => x.reg?.id === target.id);
   let cur = null;
   const m = (v, u) => (v != null && v !== "" ? `${fmt(v)} ${u}` : null);
   const clues = [
@@ -388,9 +406,12 @@ function playDaily({ token, seed }) {
     <div class="panel" style="margin-top:12px"><h3>${t("daily.attempts")}</h3><ul class="attempts" id="att"></ul></div></div>
     <div><div id="map"></div><p class="muted small">${t("map.centerhint")}</p><div class="row actions"><button id="ctr" class="ghost">${t("map.center")}</button><button id="ok" disabled>${t("daily.ok")}</button></div></div></div><div id="end"></div>`;
   let guess = null, over = false;
+  // Un indice de plus à chaque erreur : les indices à venir sont visibles mais verrouillés, le dernier ajoute une photo si elle existe.
   const showClues = () => {
-    const rows = clues.slice(0, guesses.length + 1).map((f) => f(target) || "—");
-    $("#clues").innerHTML = rows.map((c, i) => `<li${i === rows.length - 1 && guesses.length ? ' class="new"' : ""}>${esc(c)}</li>`).join("");
+    const n = over ? clues.length : guesses.length + 1;
+    $("#clues").innerHTML = clues.map((f, i) => i < n
+      ? `<li class="clue-card on${i === n - 1 && guesses.length && !over ? " new" : ""}"><span class="num">${i + 1}</span><div>${esc(f(target) || "—")}${i === clues.length - 1 && photoClue ? `<img class="clue-photo" src="${esc(photoClue.img)}" alt="${esc(t("photo.alt"))}" referrerpolicy="no-referrer" loading="lazy" onerror="this.remove()"><span class="credit">📷 ${esc(photoClue.a || "?")} · ${esc(photoClue.lic)}</span>` : ""}</div></li>`
+      : `<li class="clue-card locked"><span class="num">🔒</span><div class="muted">${t("daily.locked", { n: i + 1 })}</div></li>`).join("");
     $("#tries").textContent = t("daily.try", { n: Math.min(guesses.length + 1, S.DAILY_TRIES), t: S.DAILY_TRIES });
   };
   const place = (lat, lng) => { if (over) return; guess = [lat, lng]; if (cur) cur.remove(); cur = pin(lat, lng, PIN_GUESS, "drop").addTo(map); $("#ok").disabled = false; if (!safeMode()) $("#ok").click(); };
@@ -412,7 +433,7 @@ function playDaily({ token, seed }) {
         summary: () => `<h2>${found ? t("daily.win") : t("daily.lose")}</h2><div class="where center">${flag(target, "big")}<span>${t("daily.was", { n: esc(target.n), c: esc(countryOf(target)) })}</span></div>${factsHtml(target)}<button class="ghost" id="sheetbtn">${t("sheet.open")}</button>`,
         xp: (r) => (r.found ? 15 + (S.DAILY_TRIES - r.tries) * 3 : 4), award: () => ({ daily: seed }), share: () => `GéoDam ${seed} ${found ? guesses.length : "X"}/${S.DAILY_TRIES}\n${ch.join("")}`,
       }).then(() => $("#sheetbtn")?.addEventListener("click", () => openSheet(target)));
-    } else showClues();
+    } else { showClues(); toast(t("daily.newclue", { n: guesses.length + 1 })); }
   });
   showClues();
 }

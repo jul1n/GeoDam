@@ -1,12 +1,13 @@
 import dams from "../public/data/dams.json";
 import countries from "../public/data/countries.json";
 import missing from "../public/data/missing.json";
-import { mapScore, dailyScore, missionScore, consensus, poolInfo, continentPool, CONTINENTS, MAP_ROUNDS } from "../public/js/shared.js";
+import photos from "../public/data/photos.json";
+import { mapScore, dailyScore, missionScore, consensus, poolInfo, continentPool, CONTINENTS, WORLD, MAP_ROUNDS } from "../public/js/shared.js";
 
-const MODES = ["map", "daily", "mission"];
+const MODES = ["map", "photo", "daily", "mission"];
 const TOP_N = 50;            // il faut être dans le top 50 pour pouvoir inscrire son nom
 const SESSION_TTL = 2 * 3600 * 1000;
-const MIN_MS = { map: 3000 * MAP_ROUNDS, mission: 3000 * MAP_ROUNDS, daily: 3000 }; // temps minimum plausible (par manche / par réponse)
+const MIN_MS = { map: 3000 * MAP_ROUNDS, mission: 3000 * MAP_ROUNDS, photo: 3000 * MAP_ROUNDS, daily: 3000 }; // temps minimum plausible (par manche / par réponse)
 const NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N} _.\-]{1,15}$/u;
 const SUBMITS_PER_HOUR = 10;
 const CONTRIB_PER_HOUR = 60;      // propositions de coordonnées max par IP et par heure
@@ -68,7 +69,7 @@ const periodFor = (mode, sess) => (mode === "daily" ? sess.seed : "all");
 // ---------- routes ----------
 async function startSession(request, env) {
   const { mode, scope = "world" } = await request.json().catch(() => ({}));
-  if (!MODES.includes(mode) || !okScope(scope) || (mode === "mission" && scope !== "world")) return fail("bad_mode");
+  if (!MODES.includes(mode) || !okScope(scope) || ((mode === "mission" || mode === "photo") && scope !== "world")) return fail("bad_mode");
   const seed = mode === "daily" ? today() : crypto.randomUUID().slice(0, 8);
   const sess = { m: mode, sc: scope, seed, t: Date.now(), id: crypto.randomUUID() };
   return json({ token: await sign(env, sess), seed, mode, scope });
@@ -86,6 +87,7 @@ async function finish(request, env) {
   let res;
   if (sess.m === "map") res = mapScore(zone.pool, sess.seed, body.guesses, zone.info);
   else if (sess.m === "daily") res = dailyScore(zone.pool, sess.seed, body.guesses, zone.info);
+  else if (sess.m === "photo") res = mapScore(photos, sess.seed, body.guesses, WORLD);
   else if (sess.m === "mission") res = missionScore(dams, missing, sess.seed, body.guesses);
   if (!res) return fail("invalid_game");
 

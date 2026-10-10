@@ -100,6 +100,18 @@ const lazy = await post("/api/finish", { token: ms2.token, guesses: mr2.map(() =
 check("mission : clics au hasard sur les étalons => propositions écartées", lazy.community?.saved === 0 && lazy.community.trust < 15, JSON.stringify(lazy.community));
 check("mission refusée hors monde", (await post("/api/session", { mode: "mission", scope: "FR" })).status === 400);
 
+// ----- photo-mystère : même barème que la carte, pool de photos libres -----
+{
+  const photos = JSON.parse(readFileSync(new URL("../public/data/photos.json", import.meta.url), "utf8"));
+  const ps = await post("/api/session", { mode: "photo" });
+  const pr = S.pickMapRounds(photos, ps.seed, true);
+  check("photo : 5 manches de pays distincts", pr.length === 5 && new Set(pr.map((i) => photos[i].iso)).size === 5);
+  await sleep(15500);
+  const pres = await post("/api/finish", { token: ps.token, guesses: pr.map((i) => [photos[i].la, photos[i].lo, 0]) });
+  check("photo : score parfait 25000", pres.score === 25000, JSON.stringify({ s: pres.score, e: pres.error }));
+  check("photo refusée hors monde", (await post("/api/session", { mode: "photo", scope: "FR" })).status === 400);
+}
+
 const lb = await (await fetch(BASE + "/api/leaderboard?mode=map")).json();
 check("classement map contient le joueur", lb.entries.some((e) => e.name === "Test " + tag));
 console.log(failed ? `\n${failed} échec(s)` : "\nTout est OK");
