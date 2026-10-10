@@ -17,6 +17,14 @@ Classement sans compte : un bon score donne le droit d'inscrire un pseudo ; l'IP
 
 Un seul déploiement (`wrangler deploy`) sert les fichiers statiques et l'API, gratuit au niveau d'usage d'un petit jeu.
 
+## Mode pays
+
+Sur l'accueil, une liste déroulante avec recherche au clavier (FR ou EN, accents ignorés) permet de jouer dans un seul pays :
+83 pays jouables (≥ 20 barrages). **Aucune limite** : Chine (7 115) et États-Unis (5 378) sont complets, alors que le mode Monde plafonne à 700/pays.
+Chaque pays a ses trois modes et ses propres classements (colonne `scope`). Le barème s'adapte à l'étendue du pays
+(`poolInfo` dans `shared.js` : échelle de distance, seuil « trouvé » du barrage du jour). Les fichiers `public/data/country/XX.json`
+sont chargés à la demande ; le Worker les lit via le binding `ASSETS` pour rejouer les parties.
+
 ## Anti-triche (sans login)
 
 1. `POST /api/session` : le serveur signe (HMAC) un jeton contenant le mode, la graine aléatoire et l'heure.
@@ -34,7 +42,7 @@ Les champs pays / usages / types sont stockés en codes ou en double langue (`c`
 
 - 42 095 barrages géolocalisés sur 62 362 ; coordonnées à ~6 décimales, aucune hors plage.
 - Filtres : hauteur ≥ 15 m, noms génériques exclus, points isolés à >1 500 km de leurs voisins exclus.
-- Pool jeu : 9 000 barrages, max 700 par pays, dont 2 500 « célèbres » (barrage du jour). Rapport : `data/qa_report.json`.
+- Pool monde : 9 000 barrages, max 700 par pays, dont 2 500 « célèbres » (barrage du jour). Pools pays : tous les barrages jouables (≥ 15 m, ≥ 10 m si le pays en a moins de 40). Rapport : `data/qa_report.json`.
 
 > ⚠️ Le registre est la propriété de la CIGB/ICOLD. Vérifiez les conditions de réutilisation avant de rendre le dépôt public ; le fichier xlsx source n'est pas versionné.
 
@@ -43,7 +51,7 @@ Les champs pays / usages / types sont stockés en codes ou en double langue (`c`
 ```bash
 npm install
 cp .dev.vars.example .dev.vars        # puis changez SECRET
-npm run db:local
+npm run db:local                      # après un changement de schema.sql : DROP TABLE scores puis relancer
 npm run dev                           # http://127.0.0.1:8787
 npm run db:reset-local                # (re)vide les scores de test
 node test/e2e.mjs                     # tests bout en bout (≈ 30 s)

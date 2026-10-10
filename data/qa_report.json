@@ -6,21 +6,16 @@
   "isoles_suspects(>1500km du 3e voisin)": 5,
   "noms_generiques": 3240,
   "jouables_h>=15m": 34069,
-  "pool_final": 9000,
-  "par_tier": {
-    "2": 6500,
-    "3": 2500
-  },
-  "top_pays": {
-    "Chine": 740,
-    "États-Unis d'Amérique": 717,
-    "Inde": 700,
-    "Japon": 700,
-    "Canada": 481,
-    "Türkiye": 478,
-    "Espagne": 334,
-    "France": 257,
-    "Australie": 250,
-    "Brésil": 242
+  "pool_monde": 9000,
+  "pays_jouables": 83,
+  "pays_top": {
+    "China": 7115,
+    "United States of America": 5378,
+    "India": 2900,
+    "Japan": 2062,
+    "Türkiye": 1907,
+    "Korea (Rep. of)": 1302,
+    "South Africa": 1207,
+    "Spain": 1027
   }
 }

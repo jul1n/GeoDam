@@ -1,6 +1,6 @@
 // Service worker : coque de l'app disponible hors ligne ; l'API et les tuiles de carte ne sont jamais mises en cache.
-const CACHE = "geodam-v2";
-const SHELL = ["/", "/index.html", "/css/style.css", "/js/app.js", "/js/shared.js", "/js/i18n.js", "/data/dams.json",
+const CACHE = "geodam-v3";
+const SHELL = ["/", "/index.html", "/css/style.css", "/js/app.js", "/js/shared.js", "/js/i18n.js", "/data/dams.json", "/data/countries.json",
   "/vendor/leaflet/leaflet.js", "/vendor/leaflet/leaflet.css", "/manifest.webmanifest", "/icons/icon-192.png"];
 
 self.addEventListener("install", (e) => {

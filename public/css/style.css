@@ -35,6 +35,8 @@ button.tab { background: #fff; color: var(--muted); border-color: var(--line); }
 button.tab[aria-selected="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
 .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+.scope { margin: 16px 0; border-left: 4px solid var(--brand); }
+.scope label { display: block; }
 .table-wrap { overflow-x: auto; }
 table.lb { width: 100%; border-collapse: collapse; }
 table.lb th { background: var(--navy); color: #fff; }

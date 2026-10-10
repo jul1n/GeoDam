@@ -1,7 +1,6 @@
 // Logique de jeu partagée client + serveur : le Worker rejoue les parties pour recalculer le score.
 export const MAP_ROUNDS = 5;
 export const DAILY_TRIES = 6;
-export const FOUND_KM = 25;
 export const HILO_CAP = 60;
 export const HILO_STATS = { h: "Hauteur (m)", v: "Volume du réservoir (hm³)", y: "Année de mise en service", mw: "Puissance installée (MW)" };
 
@@ -33,26 +32,36 @@ export function bearingDeg(la1, lo1, la2, lo2) {
 }
 export const ARROWS = ["⬆️", "↗️", "➡️", "↘️", "⬇️", "↙️", "⬅️", "↖️"];
 export const arrowFor = (deg) => ARROWS[Math.round(deg / 45) % 8];
-export const mapPoints = (km) => Math.round(5000 * Math.exp(-km / 1500));
+export const mapPoints = (km, scale = 1500) => Math.round(5000 * Math.exp(-km / scale));
+
+// Réglages de difficulté selon la zone : le monde est noté sur ~1 500 km, un pays à l'échelle de son étendue.
+export const WORLD = { scale: 1500, foundKm: 25, distinct: true };
+export function poolInfo(dams, scope) {
+  if (scope === "world") return WORLD;
+  let s = 90, n = -90, w = 180, e = -180;
+  for (const d of dams) { s = Math.min(s, d.la); n = Math.max(n, d.la); w = Math.min(w, d.lo); e = Math.max(e, d.lo); }
+  const scale = Math.min(1500, Math.max(30, distanceKm(s, w, n, e) / 6));
+  return { scale, foundKm: Math.max(3, scale / 60), distinct: false };
+}
 
 const okPoint = (p) => Array.isArray(p) && p.length === 2 && Math.abs(p[0]) <= 90 && p.every(Number.isFinite);
 export const wrapLng = (lng) => ((((lng + 180) % 360) + 360) % 360) - 180;
 
 // ---------- Mode 1 : carte muette ----------
-export function pickMapRounds(dams, seed) {
+export function pickMapRounds(dams, seed, distinct = true) {
   const r = rngFrom("map:" + seed), out = [], iso = new Set();
   for (let g = 0; out.length < MAP_ROUNDS && g < 1000; g++) {
     const i = Math.floor(r() * dams.length);
-    if (out.includes(i) || iso.has(dams[i].iso)) continue;
+    if (out.includes(i) || (distinct && iso.has(dams[i].iso))) continue;
     iso.add(dams[i].iso); out.push(i);
   }
   return out;
 }
-export function mapScore(dams, seed, guesses) {
+export function mapScore(dams, seed, guesses, info = WORLD) {
   if (!Array.isArray(guesses) || guesses.length !== MAP_ROUNDS || !guesses.every(okPoint)) return null;
-  const rounds = pickMapRounds(dams, seed).map((i, k) => {
+  const rounds = pickMapRounds(dams, seed, info.distinct).map((i, k) => {
     const d = dams[i], km = distanceKm(guesses[k][0], guesses[k][1], d.la, d.lo);
-    return { km, pts: mapPoints(km) };
+    return { km, pts: mapPoints(km, info.scale) };
   });
   return { score: rounds.reduce((s, r) => s + r.pts, 0), rounds };
 }
@@ -72,7 +81,7 @@ export function hiloSequence(dams, seed, n) {
   const r = rngFrom("hilo:" + seed), valid = validIdx(dams), steps = [];
   let a = Math.floor(r() * dams.length);
   for (let i = 0; i < n; i++) {
-    const ks = Object.keys(HILO_STATS).filter((k) => dams[a][k] != null && (k !== "mw" || dams[a].mw > 0));
+    const ks = Object.keys(HILO_STATS).filter((k) => dams[a][k] != null && (k !== "mw" || dams[a].mw > 0) && valid[k].length >= 8);
     const k = ks[Math.floor(r() * ks.length)], list = valid[k];
     let b = a;
     for (let g = 0; g < 100 && (b === a || dams[b][k] === dams[a][k]); g++) b = list[Math.floor(r() * list.length)];
@@ -99,15 +108,15 @@ export function dailyIndex(dams, date) {
   const top = dams.flatMap((d, i) => (d.f === 3 ? [i] : []));
   return top[xfnv1a("daily:" + date) % top.length];
 }
-export function dailyScore(dams, date, guesses) {
+export function dailyScore(dams, date, guesses, info = WORLD) {
   if (!Array.isArray(guesses) || !guesses.length || guesses.length > DAILY_TRIES || !guesses.every(okPoint)) return null;
   const d = dams[dailyIndex(dams, date)];
   let best = Infinity;
   for (let i = 0; i < guesses.length; i++) {
     const km = distanceKm(guesses[i][0], guesses[i][1], d.la, d.lo);
     best = Math.min(best, km);
-    if (km <= FOUND_KM) return i === guesses.length - 1 ? { score: 5000 - 700 * i, found: true, tries: i + 1 } : null;
+    if (km <= info.foundKm) return i === guesses.length - 1 ? { score: 5000 - 700 * i, found: true, tries: i + 1 } : null;
   }
   if (guesses.length < DAILY_TRIES) return null; // partie inachevée
-  return { score: Math.round(1400 * Math.exp(-best / 1500)), found: false, tries: DAILY_TRIES };
+  return { score: Math.round(1400 * Math.exp(-best / info.scale)), found: false, tries: DAILY_TRIES };
 }

@@ -50,6 +50,29 @@ await sleep(3200);
 const r2 = await post("/api/finish", { token: d2.token, guesses: [[t.la, t.lo]] });
 check("daily : 2e score même IP refusé", (await post("/api/submit", { claim: r2.claim, name: "Daily2 " + tag })).status === 409);
 
+// ----- mode pays : Luxembourg-like petit pays (FR) et Chine complète -----
+for (const iso of ["FR", "CN"]) {
+  const pool = JSON.parse(readFileSync(new URL(`../public/data/country/${iso}.json`, import.meta.url), "utf8"));
+  const info = S.poolInfo(pool, iso);
+  const cs = await post("/api/session", { mode: "map", scope: iso });
+  const rounds = S.pickMapRounds(pool, cs.seed, info.distinct);
+  check(`${iso} : 5 manches distinctes`, rounds.length === 5 && new Set(rounds).size === 5);
+  await sleep(15500);
+  const cr = await post("/api/finish", { token: cs.token, guesses: rounds.map((i) => [pool[i].la, pool[i].lo]) });
+  check(`${iso} : score parfait (échelle ${Math.round(info.scale)} km)`, cr.score === 25000, JSON.stringify({ s: cr.score, e: cr.error }));
+  const cok = await post("/api/submit", { claim: cr.claim, name: `Pays ${iso} ${tag}` });
+  check(`${iso} : enregistré`, cok.ok === true, JSON.stringify(cok));
+  const clb = await (await fetch(`${BASE}/api/leaderboard?mode=map&scope=${iso}`)).json();
+  check(`${iso} : classement séparé du monde`, clb.entries.length >= 1 && clb.entries.every((e) => e.name.startsWith("Pays")));
+}
+check("scope inconnu refusé", (await post("/api/session", { mode: "map", scope: "XX" })).status === 400);
+const hs = await post("/api/session", { mode: "hilo", scope: "FR" });
+const hp = JSON.parse(readFileSync(new URL("../public/data/country/FR.json", import.meta.url), "utf8"));
+const hsteps = S.hiloSequence(hp, hs.seed, 3);
+const hans = hsteps.map(({ k, a, b }, i) => { const hi = hp[b][k] > hp[a][k]; return i < 2 ? (hi ? "h" : "l") : (hi ? "l" : "h"); });
+await sleep(3800);
+check("hilo pays : série de 2", (await post("/api/finish", { token: hs.token, answers: hans })).score === 2);
+// un token du mode pays ne peut pas être rejoué contre le pool monde : la graine/zone sont signées
 const lb = await (await fetch(BASE + "/api/leaderboard?mode=map")).json();
 check("classement map contient le joueur", lb.entries.some((e) => e.name === "Test " + tag));
 console.log(failed ? `\n${failed} échec(s)` : "\nTout est OK");

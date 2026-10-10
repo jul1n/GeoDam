@@ -82,17 +82,16 @@ def main():
     d["year"] = pd.to_numeric(d["Year"], errors="coerce")
     d.loc[(d.year < 1000) | (d.year > 2026), "year"] = np.nan  # dates fantaisistes / barrages « en projet »
 
-    usable = d.geo_ok & ~d.coarse & ~d.isolated & ~d.generic & (d.h >= 15)
-    rep["jouables_h>=15m"] = int(usable.sum())
-    p = d[usable].copy()
+    d["ckey"] = d["iso"].astype(str).str.split("/").str[0]  # barrage transfrontalier -> 1er pays
+    base = d.geo_ok & ~d.coarse & ~d.isolated & ~d.generic
+    rep["jouables_h>=15m"] = int((base & (d.h >= 15)).sum())
 
-    # notoriété : grands barrages en tête (sert au barrage du jour et au niveau de difficulté)
-    p["fame"] = (np.log1p(p.h.fillna(0)) * 1.0 + np.log1p(p.vol.fillna(0)) * 0.7
-                 + np.log1p(p.mw.fillna(0)) * 0.5 + p.URL.notna() * 1.0)
-    p = p.sort_values("fame", ascending=False)
-    # équilibrage : max 700 barrages par pays (sinon Chine + USA = 40 % du jeu), puis les 9 000 plus notoires
-    p = p[p.groupby("iso").cumcount() < 700].head(9000).reset_index(drop=True)
-    p["tier"] = np.where(p.index < 2500, 3, 2)  # 3 = célèbre (barrage du jour, mode facile)
+    def with_fame(df):
+        df = df.copy()
+        # notoriété : grands barrages en tête (barrage du jour, niveau de difficulté)
+        df["fame"] = (np.log1p(df.h.fillna(0)) * 1.0 + np.log1p(df.vol.fillna(0)) * 0.7
+                      + np.log1p(df.mw.fillna(0)) * 0.5 + df.URL.notna() * 1.0)
+        return df.sort_values("fame", ascending=False)
 
     def purposes(v):  # codes ICOLD, traduits côté front (FR/EN)
         if not isinstance(v, str):
@@ -102,41 +101,68 @@ def main():
     def title(s):
         return s.title() if s else s
 
-    def clean(v):
-        return None if (v is None or (isinstance(v, float) and math.isnan(v))) else v
+    def records(df):
+        out = []
+        for _, r in df.iterrows():
+            t = str(r["Type"]).split("/")[0] if isinstance(r["Type"], str) else None
+            out.append({
+                "id": str(r["Dam Code"]), "n": title(r["name"]),
+                "c": str(r["French Country Name"]).strip(), "ce": str(r["Country Name"]).strip(),
+                "iso": r["ckey"], "ct": r["Continent"],
+                "la": round(float(r.lat), 4), "lo": round(float(r.lon), 4),
+                "y": None if pd.isna(r.year) else int(r.year),
+                "h": None if pd.isna(r.h) else int(round(r.h)),
+                "v": None if pd.isna(r.vol) else round(float(r.vol), 1),
+                "mw": None if pd.isna(r.mw) else int(round(r.mw)),
+                "r": title(r["River"]) if isinstance(r["River"], str) else None,
+                "ci": title(r["City"]) if isinstance(r["City"], str) else None,
+                "s": title(r["St/Pr"]) if isinstance(r["St/Pr"], str) else None,
+                "p": purposes(r["Purposes"]), "t": t if t in TYPES else None, "f": int(r.tier),
+            })
+        return out
 
-    dams = []
-    for _, r in p.iterrows():
-        t = str(r["Type"]).split("/")[0] if isinstance(r["Type"], str) else None
-        dams.append({
-            "id": str(r["Dam Code"]),
-            "n": title(r["name"]),
-            "c": str(r["French Country Name"]).strip(),
-            "ce": str(r["Country Name"]).strip(),
-            "iso": r["iso"],
-            "ct": r["Continent"],
-            "la": round(float(r.lat), 4),
-            "lo": round(float(r.lon), 4),
-            "y": None if pd.isna(r.year) else int(r.year),
-            "h": None if pd.isna(r.h) else int(round(r.h)),
-            "v": None if pd.isna(r.vol) else round(float(r.vol), 1),
-            "mw": None if pd.isna(r.mw) else int(round(r.mw)),
-            "r": title(r["River"]) if isinstance(r["River"], str) else None,
-            "ci": title(r["City"]) if isinstance(r["City"], str) else None,
-            "p": purposes(r["Purposes"]),
-            "t": t if t in TYPES else None,
-            "f": int(r.tier),
-        })
+    dump = lambda path, obj: path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     out = ROOT / "public" / "data"
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "dams.json").write_text(json.dumps(dams, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    rep["pool_final"] = len(dams)
-    rep["par_tier"] = {int(k): int(v) for k, v in p.tier.value_counts().items()}
-    rep["top_pays"] = p["French Country Name"].value_counts().head(10).to_dict()
+    (out / "country").mkdir(parents=True, exist_ok=True)
+    for old in (out / "country").glob("*.json"):
+        old.unlink()
+
+    # ---- pool « monde » : 700 max par pays (sinon Chine + USA = 40 % du jeu), 9 000 plus notoires ----
+    p = with_fame(d[base & (d.h >= 15)])
+    p = p[p.groupby("ckey").cumcount() < 700].head(9000).reset_index(drop=True)
+    p["tier"] = np.where(p.index < 2500, 3, 2)  # 3 = célèbre
+    world = records(p)
+    dump(out / "dams.json", world)
+    rep["pool_monde"] = len(world)
+
+    # ---- pools par pays : AUCUNE limite (Chine, États-Unis complets) ----
+    countries = []
+    for ck, g in d[base].groupby("ckey"):
+        sel = g[g.h >= 15]
+        if len(sel) < 40:                      # petits pays : on descend le seuil à 10 m
+            sel = g[g.h >= 10]
+        if len(sel) < 20:
+            continue
+        sel = with_fame(sel).reset_index(drop=True)
+        top = int(min(max(8, len(sel) * 0.25), 300))  # « célèbres » : 25 % (max 300) -> barrage du jour
+        sel["tier"] = np.where(sel.index < top, 3, 2)
+        recs = records(sel)
+        dump(out / "country" / f"{ck}.json", recs)
+        def cname(col):  # nom propre du pays (pas « Argentine/Paraguay » d'un barrage frontalier)
+            names = g[col].dropna().astype(str).str.strip()
+            solo = names[~names.str.contains("/")]
+            return (solo if len(solo) else names).value_counts().index[0]
+        countries.append({"iso": ck, "fr": cname("French Country Name"), "en": cname("Country Name"), "n": len(recs)})
+    countries.sort(key=lambda c: -c["n"])
+    dump(out / "countries.json", countries)
+    rep["pays_jouables"] = len(countries)
+    rep["pays_top"] = {c["en"]: c["n"] for c in countries[:8]}
+
     (ROOT / "data").mkdir(exist_ok=True)
     (ROOT / "data" / "qa_report.json").write_text(json.dumps(rep, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(rep, ensure_ascii=False, indent=2))
-    print("dams.json:", round((out / "dams.json").stat().st_size / 1e6, 2), "Mo")
+    sizes = sorted(((f.stat().st_size, f.name) for f in (out / "country").glob("*.json")), reverse=True)[:3]
+    print("dams.json:", round((out / "dams.json").stat().st_size / 1e6, 2), "Mo ; plus gros pays:", sizes)
 
 
 if __name__ == "__main__":

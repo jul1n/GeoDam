@@ -1,5 +1,6 @@
 import dams from "../public/data/dams.json";
-import { mapScore, hiloScore, dailyScore, MAP_ROUNDS, DAILY_TRIES } from "../public/js/shared.js";
+import countries from "../public/data/countries.json";
+import { mapScore, hiloScore, dailyScore, poolInfo, MAP_ROUNDS } from "../public/js/shared.js";
 
 const MODES = ["map", "hilo", "daily"];
 const TOP_N = 50;            // il faut être dans le top 50 pour pouvoir inscrire son nom
@@ -7,6 +8,21 @@ const SESSION_TTL = 2 * 3600 * 1000;
 const MIN_MS = { map: 3000 * MAP_ROUNDS, daily: 3000, hilo: 1200 }; // temps minimum plausible (par manche / par réponse)
 const NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N} _.\-]{1,15}$/u;
 const SUBMITS_PER_HOUR = 10;
+const ISOS = new Set(countries.map((c) => c.iso));
+const poolCache = new Map(); // ISO -> {pool, info} (reste en mémoire tant que l'isolate vit)
+
+// pool de barrages de la zone de jeu : le monde (embarqué) ou un pays (fichier statique servi par ASSETS)
+async function getPool(env, request, scope) {
+  if (scope === "world") return { pool: dams, info: poolInfo(dams, "world") };
+  if (!poolCache.has(scope)) {
+    const r = await env.ASSETS.fetch(new URL(`/data/country/${scope}.json`, request.url));
+    if (!r.ok) return null;
+    const pool = await r.json();
+    poolCache.set(scope, { pool, info: poolInfo(pool, scope) });
+  }
+  return poolCache.get(scope);
+}
+const okScope = (sc) => sc === "world" || ISOS.has(sc);
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
@@ -43,11 +59,11 @@ const periodFor = (mode, sess) => (mode === "daily" ? sess.seed : "all");
 
 // ---------- routes ----------
 async function startSession(request, env) {
-  const { mode } = await request.json().catch(() => ({}));
-  if (!MODES.includes(mode)) return fail("bad_mode");
+  const { mode, scope = "world" } = await request.json().catch(() => ({}));
+  if (!MODES.includes(mode) || !okScope(scope)) return fail("bad_mode");
   const seed = mode === "daily" ? today() : crypto.randomUUID().slice(0, 8);
-  const sess = { m: mode, seed, t: Date.now(), id: crypto.randomUUID() };
-  return json({ token: await sign(env, sess), seed, mode });
+  const sess = { m: mode, sc: scope, seed, t: Date.now(), id: crypto.randomUUID() };
+  return json({ token: await sign(env, sess), seed, mode, scope });
 }
 
 async function finish(request, env) {
@@ -57,10 +73,12 @@ async function finish(request, env) {
   const age = Date.now() - sess.t;
   if (age > SESSION_TTL) return fail("expired", 410);
 
+  const zone = okScope(sess.sc) && (await getPool(env, request, sess.sc));
+  if (!zone) return fail("invalid_session", 401);
   let res;
-  if (sess.m === "map") res = mapScore(dams, sess.seed, body.guesses);
-  else if (sess.m === "hilo") res = hiloScore(dams, sess.seed, body.answers);
-  else if (sess.m === "daily") res = dailyScore(dams, sess.seed, body.guesses);
+  if (sess.m === "map") res = mapScore(zone.pool, sess.seed, body.guesses, zone.info);
+  else if (sess.m === "hilo") res = hiloScore(zone.pool, sess.seed, body.answers);
+  else if (sess.m === "daily") res = dailyScore(zone.pool, sess.seed, body.guesses, zone.info);
   if (!res) return fail("invalid_game");
 
   const units = sess.m === "map" ? 1 : sess.m === "daily" ? body.guesses.length : body.answers.length;
@@ -68,9 +86,9 @@ async function finish(request, env) {
 
   const period = periodFor(sess.m, sess);
   const { results } = await env.DB.prepare(
-    "SELECT COUNT(*) AS n FROM scores WHERE mode=?1 AND period=?2 AND hidden=0 AND score>?3").bind(sess.m, period, res.score).all();
+    "SELECT COUNT(*) AS n FROM scores WHERE scope=?4 AND mode=?1 AND period=?2 AND hidden=0 AND score>?3").bind(sess.m, period, res.score, sess.sc).all();
   const qualifies = res.score > 0 && results[0].n < TOP_N;
-  const claim = qualifies ? await sign(env, { k: 1, m: sess.m, p: period, s: res.score, id: sess.id, t: Date.now() }) : null;
+  const claim = qualifies ? await sign(env, { k: 1, m: sess.m, sc: sess.sc, p: period, s: res.score, id: sess.id, t: Date.now() }) : null;
   return json({ ...res, qualifies, claim, rank: results[0].n + 1 });
 }
 
@@ -87,25 +105,26 @@ async function submit(request, env) {
     "SELECT COUNT(*) AS n FROM scores WHERE ip=?1 AND created_at > datetime('now','-1 hour')").bind(ip).all();
   if (recent[0].n >= SUBMITS_PER_HOUR) return fail("rate", 429);
   if (c.m === "daily") {
-    const { results: dup } = await env.DB.prepare("SELECT 1 FROM scores WHERE mode='daily' AND period=?1 AND ip=?2").bind(c.p, ip).all();
+    const { results: dup } = await env.DB.prepare("SELECT 1 FROM scores WHERE mode='daily' AND scope=?3 AND period=?1 AND ip=?2").bind(c.p, ip, c.sc).all();
     if (dup.length) return fail("dup_daily", 409);
   }
   try {
     await env.DB.prepare(
-      "INSERT INTO scores (sid,mode,period,name,score,ip,country,ua) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)")
-      .bind(c.id, c.m, c.p, name, c.s, ip, request.cf?.country ?? null, (request.headers.get("User-Agent") || "").slice(0, 200)).run();
+      "INSERT INTO scores (sid,mode,scope,period,name,score,ip,country,ua) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)")
+      .bind(c.id, c.m, c.sc, c.p, name, c.s, ip, request.cf?.country ?? null, (request.headers.get("User-Agent") || "").slice(0, 200)).run();
   } catch { return fail("dup", 409); }
   return json({ ok: true });
 }
 
 async function leaderboard(url, env) {
   const mode = url.searchParams.get("mode");
-  if (!MODES.includes(mode)) return fail("bad_mode");
+  const scope = url.searchParams.get("scope") || "world";
+  if (!MODES.includes(mode) || !okScope(scope)) return fail("bad_mode");
   const period = mode === "daily" ? (url.searchParams.get("period") || today()) : "all";
   const { results } = await env.DB.prepare(
-    "SELECT name, score, country, created_at FROM scores WHERE mode=?1 AND period=?2 AND hidden=0 ORDER BY score DESC, id ASC LIMIT 20")
-    .bind(mode, period).all();
-  return json({ mode, period, entries: results });
+    "SELECT name, score, country, created_at FROM scores WHERE scope=?3 AND mode=?1 AND period=?2 AND hidden=0 ORDER BY score DESC, id ASC LIMIT 20")
+    .bind(mode, period, scope).all();
+  return json({ mode, scope, period, entries: results });
 }
 
 export default {
