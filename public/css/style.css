@@ -242,3 +242,27 @@ ol.cluelist { list-style: none; padding: 0; margin: 8px 0 0; }
 .clue-card .num { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: .8rem; }
 .clue-card.locked { background: #f3f4f8; opacity: .75; } .clue-card.locked .num { background: #c9cfe6; font-size: .7rem; }
 .clue-photo { display: block; width: 100%; max-width: 360px; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; margin-top: 6px; }
+
+/* accueil « vendeur » : un seul hero (jouer, défis, zone), profil sur une ligne */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 16px 0 12px; max-width: 760px; }
+.tile { display: flex; align-items: center; gap: 12px; text-align: left; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.28); color: #fff; border-radius: 18px; padding: 12px 16px; min-height: 66px; backdrop-filter: blur(4px); }
+.tile:hover:not(:disabled) { background: rgba(255,255,255,.2); transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,.25); }
+.tile .ti { font-size: 1.8rem; line-height: 1; } .tile b { display: block; font-size: 1rem; } .tile small { color: #c9d0f5; font-weight: 400; font-size: .82rem; }
+.zonepill { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.3); border-radius: 999px; padding: 3px 6px 3px 16px; max-width: 560px; margin: 8px 0 2px; }
+.zonepill input { background: transparent; border: none; color: #fff; padding: 8px 4px; min-height: 40px; border-radius: 0; }
+.zonepill input::placeholder { color: #c9d0f5; } .zonepill input:focus { outline: none; }
+.zonepill:focus-within { background: rgba(255,255,255,.2); border-color: #fff; }
+.zonepill .ghost { color: #fff; border-color: rgba(255,255,255,.5); white-space: nowrap; padding: 6px 14px; min-height: 36px; font-size: .85rem; }
+.hint { margin: 2px 0 0 14px; color: #c9d0f5; min-height: 1.2em; } .hint.err { color: #ffd2b3; }
+.flagart { display: grid; place-items: center; padding: 10px 0 24px; } .flag.xl { width: min(300px, 70%); height: auto; aspect-ratio: 4 / 3; margin: 0; border-radius: 16px; box-shadow: 0 22px 50px rgba(0,0,0,.4); transform: rotate(-4deg); animation: flagin .7s cubic-bezier(.2, 1.4, .4, 1); }
+.globe { font-size: 9rem; line-height: 1; filter: drop-shadow(0 14px 24px rgba(0,0,0,.4)); }
+.profile.strip { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; margin-top: 14px; padding: 10px 16px; }
+.profile.strip .xpbar { flex: 1 1 160px; min-width: 140px; margin: 0; } .profile.strip .badges { margin: 0; gap: 6px; } .profile.strip .badge { width: 34px; height: 34px; font-size: 1.05rem; border-radius: 10px; }
+.profile.strip small { white-space: nowrap; }
+.hero { margin-bottom: 0; }
+@media (max-width: 860px) { .flag.xl { width: 160px; } .globe { font-size: 5rem; } .flagart { padding: 6px 0 0; order: -1; } }
+
+/* photos de solution / de repli */
+.reveal-photo { margin: 10px 0 0; position: relative; } .reveal-photo img { width: 100%; border-radius: 12px; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: #dfe4f5; }
+.reveal-photo figcaption { font-size: .75rem; color: var(--muted); margin-top: 4px; } .reveal-photo figcaption a { color: var(--brand-dark); }
+.reveal-photo .broken-msg { display: none; } .reveal-photo.broken img { display: none; } .reveal-photo.broken .broken-msg { display: block; padding: 18px; text-align: center; color: var(--muted); background: #eef1fc; border-radius: 12px; }

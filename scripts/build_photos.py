@@ -18,8 +18,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 UA = "GeoDam/0.1 (https://github.com/jul1n/GeoDam; prototype)"
-LIMIT = 1200      # candidats Wikidata (triés par notoriété)
-KEEP = 600        # photos conservées au maximum
+LIMIT = 3000      # candidats Wikidata (triés par notoriété)
+KEEP = 1500       # photos conservées au maximum
 FREE = re.compile(r"^(CC BY|CC0|CC-BY|Public domain|PD|CC BY-SA|Attribution)", re.I)
 
 SPARQL = """

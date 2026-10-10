@@ -69,7 +69,12 @@ function bindZone(mode) {
   });
 }
 let photosPool = null;
-const loadPhotos = async () => (photosPool ??= await (await fetch("data/photos.json")).json());
+const photoByReg = new Map();   // id du registre -> photo : permet d'illustrer les autres modes quand une photo existe
+const loadPhotos = async () => {
+  if (!photosPool) { photosPool = await (await fetch("data/photos.json")).json(); photosPool.forEach((x) => x.reg?.id && photoByReg.set(x.reg.id, x)); }
+  return photosPool;
+};
+const photoFor = (d) => (d?.img ? d : photoByReg.get(d?.id));
 async function loadMissing() { if (!missingPool) missingPool = await (await fetch("data/missing.json")).json(); return missingPool; }
 
 // Le mode démo (GitHub Pages) simule le serveur dans le navigateur : il a besoin des mêmes pools que le Worker.
@@ -180,40 +185,37 @@ const heroSvg = () => `<svg class="hero-art" viewBox="0 0 420 260" aria-hidden="
 
 function profileCard() {
   const lv = P.level(), p = P.get();
-  return `<section class="panel profile" aria-label="${t("prof.title")}">
+  return `<section class="panel profile strip" aria-label="${t("prof.title")}">
     <div class="lvl"><span class="lvl-n">${t("prof.level", { n: lv.n + 1 })}</span><b>${esc(t("lvl." + lv.n))}</b></div>
     <div class="xpbar" role="progressbar" aria-valuenow="${lv.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${lv.pct}%"></i></div>
     <small class="muted">${t("prof.next", { x: fmt(lv.xp), y: fmt(lv.hi) })}${p.streak ? " · " + t("prof.streak", { n: p.streak }) : ""}</small>
     <div class="badges" role="list">${Object.entries(P.BADGES).map(([k, icon]) => `<span role="listitem" class="badge ${p.badges.includes(k) ? "on" : ""}" title="${esc(t("bd." + k))} — ${esc(t("bd." + k + ".d"))}"><i aria-hidden="true">${icon}</i><span class="sr">${esc(t("bd." + k))}</span></span>`).join("")}</div></section>`;
 }
 
-const quickHtml = (modes) => `<div class="row"><button class="cta-main" data-mode="map">▶ ${t("hero.cta")}</button></div>
-  <div class="quick" role="group" aria-label="${esc(t("home.play"))}"><span class="muted">${t("hero.quick")}</span>${modes.filter((m) => m !== "map").map((m) => `<button class="cta-sec" data-mode="${m}">${ICON[m]} ${t("mode." + m)}</button>`).join("")}</div>`;
-
 function home() {
   inGame = false; setNav(""); document.body.classList.remove("playing");
   if (inWorld()) setWorld(); else if (ctx.scope.startsWith("ct:")) ctx.name = contName(ctx.scope.slice(3)); else ctx.name = cname(countries.find((c) => c.iso === ctx.iso));
   const modes = inWorld() ? MODES : MODES.filter((m) => m !== "mission" && m !== "photo");
   const list = allScopes().sort((a, b) => cname(a).localeCompare(cname(b), getLang()));
-  const total = stats?.total ?? 62362, geo = stats?.geo ?? 42095;
+  const total = stats?.total ?? 62362, geo = stats?.geo ?? 42095, isW = inWorld(), isCt = ctx.scope.startsWith("ct:");
+  const art = isW ? heroSvg() : `<div class="hero-art flagart" aria-hidden="true">${isCt ? '<span class="globe">🧭</span>' : flag({ iso: ctx.iso }, "xl")}</div>`;
   app.innerHTML = `
-    ${inWorld() ? `<section class="hero"><div class="hero-in"><div class="hero-txt"><p class="kicker">${t("hero.kicker")}</p><h1>${t("hero.title")}</h1>
-        <p class="hero-sub">${t("hero.sub", { n: fmt(total) })}</p>
-        ${quickHtml(modes)}
-        <ul class="chips"><li><b>${fmt(dams.length)}</b> ${t("hero.s1")}</li><li><b>${countries.length}</b> ${t("hero.s2")}</li><li><b>${fmt(total - geo)}</b> ${t("hero.s3")}</li></ul></div>${heroSvg()}</div></section>`
-      : `<h1 class="country-h">${t("scope.h1", { c: esc(ctx.name) })}</h1><p class="lead">${t(ctx.scope.startsWith("ct:") ? "scope.lead.ct" : "scope.lead", { c: esc(ctx.name) })}</p>${quickHtml(modes)}`}
-    <div class="grid2"><div>
-      <div class="panel scope"><label for="cinput"><b>${t("scope.title")}</b> : ${inWorld() ? t("scope.world") : esc(ctx.name)} <span class="muted">(${t("scope.count", { n: fmt(ctx.pool.length) })})</span></label>
-        <form class="row" id="cform" autocomplete="off">
-          <input type="text" id="cinput" list="clist" placeholder="${esc(t("scope.search"))}" aria-label="${esc(t("scope.search"))}" autocapitalize="none" spellcheck="false">
-          <datalist id="clist">${list.map((c) => `<option value="${esc(cname(c))}">${fmt(c.n)}</option>`).join("")}</datalist>
-          <button>${t("scope.ok")}</button>${inWorld() ? "" : `<button type="button" class="ghost" id="cworld">${t("scope.back")}</button>`}
-        </form><p class="muted small" id="chint">${t("scope.hint")}</p></div></div>
-      <div>${profileCard()}</div></div>
-    <h2 id="modes" class="sec">${t("home.play")}</h2>
-    <div class="cards">${modes.map((m) => `<article class="card c-${m}"><div class="ico" aria-hidden="true">${ICON[m]}</div><h3>${t("mode." + m)}</h3><p>${t("mode." + m + ".d")}</p><button data-mode="${m}">${t("play")}</button></article>`).join("")}</div>
-    ${inWorld() ? '<div id="mprog" class="panel"></div>' : ""}
-    <h2 class="sec">${inWorld() ? t("lb.title") : t("lb.for", { c: esc(ctx.name) })}</h2>
+    <section class="hero"><div class="hero-in"><div class="hero-txt">
+      <p class="kicker">${isW ? t("hero.kicker") : t("hero.kicker.scope")}</p>
+      <h1>${isW ? t("hero.title") : t("hero.title.scope", { c: esc(ctx.name) })}</h1>
+      <p class="hero-sub">${isW ? t("hero.sub", { n: fmt(total) }) : t("hero.sub.scope", { n: fmt(ctx.pool.length) })}</p>
+      <div class="row"><button class="cta-main" data-mode="map">▶ ${t("hero.cta")}</button></div>
+      <div class="tiles">${modes.filter((m) => m !== "map").map((m) => `<button class="tile" data-mode="${m}"><span class="ti" aria-hidden="true">${ICON[m]}</span><span><b>${t("mode." + m)}</b><small>${t("tile." + m)}</small></span></button>`).join("")}</div>
+      <form class="zonepill" id="cform" autocomplete="off"><span aria-hidden="true">📍</span><label class="sr" for="cinput">${t("scope.title")}</label>
+        <input type="text" id="cinput" list="clist" placeholder="${esc(t("zone.ph"))}" autocapitalize="none" spellcheck="false">
+        <datalist id="clist">${list.map((c) => `<option value="${esc(cname(c))}">${fmt(c.n)}</option>`).join("")}</datalist>
+        ${isW ? "" : `<button type="button" class="ghost" id="cworld">${t("scope.back")}</button>`}</form>
+      <p class="small hint" id="chint" role="status"></p>
+      ${isW ? `<ul class="chips"><li><b>${fmt(dams.length)}</b> ${t("hero.s1")}</li><li><b>${countries.length}</b> ${t("hero.s2")}</li><li><b>${fmt(total - geo)}</b> ${t("hero.s3")}</li></ul>` : ""}
+    </div>${art}</div></section>
+    ${profileCard()}
+    ${isW ? '<div id="mprog" class="panel"></div>' : ""}
+    <h2 class="sec">${isW ? t("lb.title") : t("lb.for", { c: esc(ctx.name) })}</h2>
     <div class="tabs" role="tablist">${modes.map((m, i) => `<button class="tab" role="tab" data-lb="${m}" aria-selected="${i === 0}">${ICON[m]} ${t("mode." + m)}</button>`).join("")}</div>
     <div class="panel" id="lb">${t("lb.loading")}</div>`;
   app.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => start(b.dataset.mode)));
@@ -226,7 +228,7 @@ function home() {
     const sc = allScopes();
     const hit = sc.find((c) => norm(c.fr) === q || norm(c.en) === q || norm(c.id) === q)
       || (() => { const m = sc.filter((c) => norm(c.fr).startsWith(q) || norm(c.en).startsWith(q)); return m.length === 1 ? m[0] : null; })();
-    if (!hit) { $("#chint").className = "err small"; $("#chint").textContent = t("scope.err"); return; }
+    if (!hit) { $("#chint").className = "err small hint"; $("#chint").textContent = t("scope.err"); return; }
     $("#chint").textContent = t("scope.loading");
     try { await selectScope(hit.id); start("map"); } catch { $("#chint").className = "err small"; $("#chint").textContent = t("scope.err"); }
   };
@@ -303,7 +305,7 @@ async function start(mode) {
   app.innerHTML = `<p class="muted">${t("prep")}</p>`;
   try {
     if (mode === "photo") await loadPhotos();
-    if (mode === "daily") await loadPhotos().catch(() => {});   // le dernier indice est une photo, quand elle existe
+    else if (mode === "map" || mode === "daily") await loadPhotos().catch(() => {});   // photos : indice, solution, dernier indice du jour
     if (mode === "mission") await Promise.all([loadMissing(), fetch("data/bounds.json").then((r) => r.json()).then((b) => { bounds = b; })]);
     const sess = await api("session", { mode, scope: ctx.scope });
     ({ map: (x) => playMap(x), photo: (x) => playMap(x, true), daily: playDaily, mission: playMission })[mode](sess);
@@ -313,6 +315,14 @@ async function start(mode) {
 }
 
 // ---------------------------------------------------------------- Mode « photo » : même mécanique que la carte muette, avec une vraie photo
+// Repli si la miniature Wikimedia ne charge pas : on retente via Special:FilePath, puis on affiche un cadre « photo indisponible ».
+const fbSrc = (x) => `https://commons.wikimedia.org/wiki/Special:FilePath/${(x.page || "").split("File:")[1] || ""}?width=900`;
+document.addEventListener("error", (e) => {
+  const img = e.target;
+  if (img?.tagName !== "IMG" || !img.dataset.fb) return;
+  if (!img.dataset.tried) { img.dataset.tried = "1"; img.src = img.dataset.fb; } else (img.closest(".photo-frame") || img.closest("figure"))?.classList.add("broken");
+}, true);
+const revealPhoto = (x) => (x ? `<figure class="reveal-photo"><img src="${esc(x.img)}" data-fb="${esc(fbSrc(x))}" alt="${esc(t("photo.alt"))}" referrerpolicy="no-referrer" loading="lazy"><span class="broken-msg">${t("photo.broken")}</span><figcaption>📷 ${esc(x.a || "?")} · <a href="${esc(x.page)}" target="_blank" rel="noopener">${esc(x.lic)}</a> · Wikimedia Commons</figcaption></figure>` : "");
 const asDam = (d) => ({ ...d.reg, id: d.id, n: d.n, la: d.la, lo: d.lo, iso: d.iso, c: d.c, ce: d.ce, ct: d.ct });
 const creditHtml = (d) => `<p class="credit">📷 ${esc(d.a || "?")} · <a href="${esc(d.page)}" target="_blank" rel="noopener">${esc(d.lic)}</a> · Wikimedia Commons</p>`;
 function photoCard(d, level, shownLevel = -1) {
@@ -321,7 +331,7 @@ function photoCard(d, level, shownLevel = -1) {
     level >= 1 && [t("clue.continent"), d.ct && contLabel(d), 1], level >= 2 && [t("clue.country"), countryOf(d), 2],
     level >= 3 && [t("photo.name"), d.n, 3], level >= 3 && [t("clue.height"), km(r.h, "m"), 3], level >= 3 && [t("clue.year"), r.y, 3], level >= 3 && [t("clue.river"), r.r, 3],
   ].filter((x) => x && x[1]);
-  return `<div class="panel clue photo"><div class="photo-frame"><img src="${esc(d.img)}" alt="${esc(t("photo.alt"))}" referrerpolicy="no-referrer" onerror="this.closest('.photo-frame').classList.add('broken')"><span class="broken-msg">${t("photo.broken")}</span></div>
+  return `<div class="panel clue photo"><div class="photo-frame"><img src="${esc(d.img)}" alt="${esc(t("photo.alt"))}" referrerpolicy="no-referrer" data-fb="${esc(fbSrc(d))}"><span class="broken-msg">${t("photo.broken")}</span></div>
     ${rows.length ? `<dl>${rows.map(([k, v, lv]) => `<dt>${k}</dt><dd${shownLevel >= 0 && lv > shownLevel ? ' class="new"' : ""}>${esc(v)}</dd>`).join("")}</dl>` : `<p class="muted small">${t("photo.who")}</p>`}
     <p class="credit">📷 ${esc(d.a || "?")} · ${esc(d.lic)}</p></div>`;
 }
@@ -342,7 +352,7 @@ function playMap({ token, seed }, photo = false) {
   $("#ctr").addEventListener("click", () => { const c = map.getCenter(); place(c.lat, S.wrapLng(c.lng)); });
   const side = () => {
     const d = pool[idx[round]];
-    $("#side").innerHTML = (photo ? photoCard(d, hints, shown) : clueCard(d, hints, shown)) +
+    $("#side").innerHTML = (photo ? photoCard(d, hints, shown) : clueCard(d, hints, shown) + (hints >= S.MAX_HINTS ? revealPhoto(photoFor(d)) : "")) +
       `<div class="hintbar"><button class="ghost" id="hint" ${hints >= S.MAX_HINTS || locked ? "disabled" : ""}>${hints >= S.MAX_HINTS ? t("hint.none") : t("hint.btn")}</button>
        <small class="muted">${hints ? t("hint.used", { n: hints, p: hints * 10 }) : t("hint.left", { n: S.MAX_HINTS })}</small></div><p class="muted small">${hintTxt()}</p>`;
     shown = hints;
@@ -361,7 +371,7 @@ function playMap({ token, seed }, photo = false) {
     layers.push(pin(d.la, d.lo, PIN_TRUTH, "pulse").addTo(map), L.polyline([guess, [d.la, d.lo]], { color: "#111a4c", dashArray: "6 6", weight: 2 }).addTo(map));
     map.fitBounds(L.latLngBounds([guess, [d.la, d.lo]]).pad(0.5), { maxZoom: 7 });
     $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">${reactFor(base)}</div><div class="where">${flag(d, "big")}<div><b>${esc(countryOf(d))}</b>${photo ? `<br><span class="muted">${esc(d.n)}</span>` : ""}${multi() || !(d.s || d.ci) ? "" : `<br><span class="muted">${esc(d.s || d.ci)}</span>`}</div></div>${t("map.dist", { km: fmt(km) })}
-      <div class="pts-line">+<span id="rp">0</span>${hints ? ` <small>(−${hints * 10} %)</small>` : ""}</div>${photo ? creditHtml(d) : factsHtml(d)}${!photo || d.reg ? `<button class="ghost" id="sheetbtn">${t("sheet.open")}</button>` : ""}${safeMode() ? "" : `<p class="muted small">${t("map.next2")}</p>`}</div>`);
+      <div class="pts-line">+<span id="rp">0</span>${hints ? ` <small>(−${hints * 10} %)</small>` : ""}</div>${photo ? creditHtml(d) : factsHtml(d) + revealPhoto(photoFor(d))}${!photo || d.reg ? `<button class="ghost" id="sheetbtn">${t("sheet.open")}</button>` : ""}${safeMode() ? "" : `<p class="muted small">${t("map.next2")}</p>`}</div>`);
     countUp($("#rp"), pts, 700, fmt); $("#sheetbtn")?.addEventListener("click", () => openSheet(photo ? asDam(d) : d));
     if (base >= 4800) confetti(80);
     $("#sc").textContent = t("map.score", { s: fmt(total) });
@@ -389,7 +399,7 @@ function playDaily({ token, seed }) {
     $("#tohome2").addEventListener("click", () => route());
     showLeaderboard("daily", $("#lb")); return;
   }
-  const guesses = [], ch = [], photoClue = photosPool?.find((x) => x.reg?.id === target.id);
+  const guesses = [], ch = [], photoClue = photoFor(target);
   let cur = null;
   const m = (v, u) => (v != null && v !== "" ? `${fmt(v)} ${u}` : null);
   const clues = [
@@ -410,7 +420,7 @@ function playDaily({ token, seed }) {
   const showClues = () => {
     const n = over ? clues.length : guesses.length + 1;
     $("#clues").innerHTML = clues.map((f, i) => i < n
-      ? `<li class="clue-card on${i === n - 1 && guesses.length && !over ? " new" : ""}"><span class="num">${i + 1}</span><div>${esc(f(target) || "—")}${i === clues.length - 1 && photoClue ? `<img class="clue-photo" src="${esc(photoClue.img)}" alt="${esc(t("photo.alt"))}" referrerpolicy="no-referrer" loading="lazy" onerror="this.remove()"><span class="credit">📷 ${esc(photoClue.a || "?")} · ${esc(photoClue.lic)}</span>` : ""}</div></li>`
+      ? `<li class="clue-card on${i === n - 1 && guesses.length && !over ? " new" : ""}"><span class="num">${i + 1}</span><div>${esc(f(target) || "—")}${i === clues.length - 1 && photoClue ? `<img class="clue-photo" src="${esc(photoClue.img)}" alt="${esc(t("photo.alt"))}" referrerpolicy="no-referrer" loading="lazy" data-fb="${esc(fbSrc(photoClue))}"><span class="credit">📷 ${esc(photoClue.a || "?")} · ${esc(photoClue.lic)}</span>` : ""}</div></li>`
       : `<li class="clue-card locked"><span class="num">🔒</span><div class="muted">${t("daily.locked", { n: i + 1 })}</div></li>`).join("");
     $("#tries").textContent = t("daily.try", { n: Math.min(guesses.length + 1, S.DAILY_TRIES), t: S.DAILY_TRIES });
   };
@@ -430,7 +440,7 @@ function playDaily({ token, seed }) {
       store.set(key, JSON.stringify(S.dailyScore(pool, seed, guesses, info)));
       if (found) confetti(150);
       finishGame("daily", token, { guesses }, {
-        summary: () => `<h2>${found ? t("daily.win") : t("daily.lose")}</h2><div class="where center">${flag(target, "big")}<span>${t("daily.was", { n: esc(target.n), c: esc(countryOf(target)) })}</span></div>${factsHtml(target)}<button class="ghost" id="sheetbtn">${t("sheet.open")}</button>`,
+        summary: () => `<h2>${found ? t("daily.win") : t("daily.lose")}</h2><div class="where center">${flag(target, "big")}<span>${t("daily.was", { n: esc(target.n), c: esc(countryOf(target)) })}</span></div>${factsHtml(target)}${revealPhoto(photoClue)}<button class="ghost" id="sheetbtn">${t("sheet.open")}</button>`,
         xp: (r) => (r.found ? 15 + (S.DAILY_TRIES - r.tries) * 3 : 4), award: () => ({ daily: seed }), share: () => `GéoDam ${seed} ${found ? guesses.length : "X"}/${S.DAILY_TRIES}\n${ch.join("")}`,
       }).then(() => $("#sheetbtn")?.addEventListener("click", () => openSheet(target)));
     } else { showClues(); toast(t("daily.newclue", { n: guesses.length + 1 })); }

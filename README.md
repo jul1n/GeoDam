@@ -16,7 +16,7 @@ Quatre défis (dont un test avec photos libres), un profil joueur (XP, niveaux, 
 | Mode | Principe |
 |---|---|
 | 🗺️ Carte muette | 5 manches : placer le barrage. 3 niveaux d'indices payants (−10 % chacun) : contexte → exploitant/réservoir/dimensions → pays/ville. |
-| 📷 Photo-mystère (test) | 5 manches : une vraie photo d'un barrage (≈ 600 barrages, Wikimedia Commons), à situer sur la carte ; mêmes indices payants. Auteur et licence affichés. |
+| 📷 Photo-mystère (test) | 5 manches : une vraie photo d'un barrage (≈ 1 500 barrages, Wikimedia Commons), à situer sur la carte ; mêmes indices payants. Auteur et licence affichés. |
 | 📅 Barrage du jour | Même barrage pour tous, 6 essais, un indice de plus à chaque erreur. Règles résumées dans un encart repliable de la partie. |
 | 🛰️ Mission cartographe | 5 manches : 2 barrages « étalons » (position connue, mesurent la fiabilité) + 3 barrages **sans coordonnées** : la proposition est enregistrée. |
 
@@ -80,7 +80,7 @@ Limite connue : les données sont publiques, un joueur motivé peut écrire un b
 | `country/XX.json` + `countries.json` | pools par pays, sans limite (Chine 7 115, États-Unis 5 378) |
 | `missing.json` | 1 522 barrages sans coordonnées mais documentés (cours d'eau, ville ou région) |
 | `bounds.json` | emprise de chaque pays (cadrage de la carte en mission) |
-| `photos.json` | 600 barrages avec photo libre (Wikidata + Commons : auteur, licence, miniature), rapprochés du registre à < 3 km (`scripts/build_photos.py`). Les photos ne sont pas copiées, elles sont servies par Wikimedia. |
+| `photos.json` | 1 500 barrages avec photo libre (Wikidata + Commons : auteur, licence, miniature), rapprochés du registre à < 3 km (`scripts/build_photos.py`). Les photos ne sont pas copiées, elles sont servies par Wikimedia. |
 | `stats.json` | chiffres clés et complétude pour la page *Le registre* |
 
 Contrôle qualité : 42 095 barrages géolocalisés sur 62 362, coordonnées à ~6 décimales, aucune hors plage ; 5 points isolés (> 1 500 km de leurs voisins) et 3 240 noms génériques exclus. Rapport : `data/qa_report.json`.
