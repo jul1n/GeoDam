@@ -9,6 +9,14 @@ try{
  await page.goto((process.argv[2]||"http://127.0.0.1:8792")+"/?demo=1");
  const diagram=page.locator(".dam-diagram");
  await diagram.waitFor();
+ const chips=await page.locator(".chips li").first().evaluate(el=>{
+   const style=getComputedStyle(el);return {background:style.backgroundColor,border:style.borderTopWidth,radius:style.borderTopLeftRadius,font:parseFloat(style.fontSize)};
+ });
+ assert.equal(chips.background,"rgba(0, 0, 0, 0)");
+ assert.equal(chips.border,"0px");
+ assert.equal(chips.radius,"0px");
+ assert.ok(chips.font<16);
+
  assert.equal(await diagram.locator(".fall").count(),0);
  assert.equal(await diagram.getAttribute("role"),"img");
  assert.match(await diagram.locator("desc").textContent(),/irrigation/);

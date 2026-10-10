@@ -1,4 +1,4 @@
-const VERSION="geodam-83c94877e8a97c46";
+const VERSION="geodam-e5a801ad44022cf3";
 const SHELL=VERSION+"-shell", DATA=VERSION+"-data";
 const ROOT=new URL("./",self.location.href);
 const CORE=["./","index.html","css/style.css","js/app.js","js/shared.js","js/i18n.js","js/lang-extra.js","js/api.js","js/pages.js","js/profile.js","js/ui.js","js/experience.js","vendor/leaflet/leaflet.js","vendor/leaflet/leaflet.css","manifest.webmanifest","icons/icon-192.png","data/dams.json","data/countries.json","data/stats.json","data/photos.json","data/version.json"];

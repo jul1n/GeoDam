@@ -64,13 +64,9 @@ button.tab.good { background: #e6f4e1; border-color: var(--green); color: var(--
 .cta-sec { background: transparent; border-color: rgba(255,255,255,.7); color: #fff; }
 .cta-sec:hover:not(:disabled) { background: rgba(255,255,255,.14); }
 .chips { list-style: none; display: flex; gap: 6px 22px; flex-wrap: wrap; padding: 0; margin: 14px 0 12px; color: #dfe3f8; }
-.chips li { padding: 0; font-size: .85rem; }
+.chips li { background: none; border: 0; border-radius: 0; padding: 0; font-size: .85rem; }
 .chips b { color: inherit; font-size: inherit; font-weight: 600; }
 .hero-art { width: 100%; height: auto; max-height: 300px; align-self: end; }
-.wave { animation: drift 7s linear infinite; } .w2 { animation-duration: 11s; animation-direction: reverse; }
-@keyframes drift { to { transform: translateX(100px); } }
-.fall { animation: fall 1.4s ease-in infinite; transform-origin: top; } .f2 { animation-delay: .5s; }
-@keyframes fall { 0% { opacity: .2; transform: scaleY(.3); } 60% { opacity: .95; transform: scaleY(1); } 100% { opacity: .3; transform: scaleY(1); } }
 
 /* ---------- panneaux, accueil ---------- */
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; box-shadow: var(--shadow); }
