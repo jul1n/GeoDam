@@ -218,3 +218,9 @@ dialog.sheet .close { position: absolute; top: 12px; right: 12px; min-height: 36
 @keyframes flagin { from { transform: scale(.4) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
 .where { display: flex; align-items: center; gap: 12px; font-size: 1.25rem; margin: 6px 0 4px; line-height: 1.2; } .where.center { justify-content: center; text-align: left; font-size: 1.1rem; }
 .vs-card .flag { margin-right: 6px; }
+
+/* sélecteur de zone en cours de partie, règles repliables */
+.hud-tools { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.zone select { font: inherit; font-size: .9rem; font-weight: 700; padding: 6px 14px; min-height: 36px; border-radius: 999px; border: 2px solid #cfd5ea; background: #fff; color: var(--navy); max-width: 220px; cursor: pointer; }
+.zone select:focus-visible { border-color: var(--brand); }
+.rules summary { font-weight: 800; color: var(--navy); cursor: pointer; } .rules ol { margin: 8px 0 0; padding-left: 20px; } .rules li { margin: 4px 0; font-size: .92rem; }

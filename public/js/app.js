@@ -3,7 +3,7 @@ import { t, getLang, setLang, countryOf, applyStatic } from "./i18n.js";
 import { api, DEMO, setResolver } from "./api.js";
 import * as P from "./profile.js";
 import { confetti, countUp, toast, esc, fmt, flag } from "./ui.js";
-import { uses, typeLabel, contLabel, factsHtml, openSheet, renderExplore, renderRegister, renderGlossary, renderAbout, missionProgress } from "./pages.js";
+import { uses, typeLabel, contLabel, factsHtml, openSheet, renderRegister, renderGlossary, renderAbout, missionProgress } from "./pages.js";
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const app = $("#app");
@@ -11,8 +11,9 @@ const store = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
   set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* navigation privée */ } },
 };
-const MODES = ["map", "hilo", "daily", "mission"];
-const ICON = { map: "🗺️", hilo: "⚖️", daily: "📅", mission: "🛰️" };
+const MODES = ["map", "daily", "mission"];
+const ICON = { map: "🗺️", daily: "📅", mission: "🛰️" };
+const CONT_LABEL = { EUROPE: ["Europe", "Europe"], ASIA: ["Asie", "Asia"], AFRICA: ["Afrique", "Africa"], NAMERICA: ["Amérique du Nord", "North America"], SAMERICA: ["Amérique du Sud", "South America"], OCEANIA: ["Océanie", "Oceania"] };
 const PIN_GUESS = "#ee813c", PIN_TRUTH = "#76b861";
 
 let dams = [], map = null, stats = null;
@@ -24,7 +25,9 @@ let inGame = false;
 const inWorld = () => ctx.scope === "world";
 const norm = (x) => String(x).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const cname = (c) => (getLang() === "fr" ? c.fr : c.en);
-const placeOf = (d) => (inWorld() ? countryOf(d) : d.s || d.ci || countryOf(d));
+const multi = () => ctx.scope === "world" || ctx.scope.startsWith("ct:");   // monde ou continent : plusieurs pays en jeu
+const contName = (k) => CONT_LABEL[k][getLang() === "fr" ? 0 : 1];
+const placeOf = (d) => (multi() ? countryOf(d) : d.s || d.ci || countryOf(d));
 const bboxOf = (pool) => { const [s, w, n, e] = S.robustBox(pool); return L.latLngBounds([[s, w], [n, e]]).pad(0.03); };
 function setWorld() { ctx = { scope: "world", pool: dams, info: S.WORLD, name: t("scope.world"), bounds: null }; }
 async function loadCountry(iso) {
@@ -39,10 +42,37 @@ async function setCountry(iso) {
   const pool = await loadCountry(iso);
   ctx = { scope: iso, pool, info: S.poolInfo(pool, iso), name: cname(c), bounds: bboxOf(pool), iso };
 }
+async function selectScope(v) {
+  if (v === "world") return setWorld();
+  if (v.startsWith("ct:")) {
+    const k = v.slice(3), pool = S.continentPool(dams, k);
+    ctx = { scope: v, pool, info: S.poolInfo(pool, v), name: contName(k), bounds: bboxOf(pool) }; return;
+  }
+  await setCountry(v);
+}
+const allScopes = () => [
+  ...Object.keys(S.CONTINENTS).map((k) => ({ id: "ct:" + k, fr: CONT_LABEL[k][0], en: CONT_LABEL[k][1], n: S.continentPool(dams, k).length })),
+  ...countries.map((c) => ({ id: c.iso, fr: c.fr, en: c.en, n: c.n })),
+];
+// Liste déroulante « zone de jeu » affichée pendant une partie : permet de basculer vers un continent ou un pays.
+function zoneSelect() {
+  const sel = (v) => (ctx.scope === v ? " selected" : "");
+  const cs = [...countries].sort((a, b) => cname(a).localeCompare(cname(b), getLang()));
+  return `<label class="zone"><span class="sr">${t("zone.label")}</span><select id="zone" aria-label="${esc(t("zone.label"))}">
+    <option value="world"${sel("world")}>🌍 ${t("scope.world")}</option>
+    <optgroup label="${esc(t("zone.continents"))}">${Object.keys(S.CONTINENTS).map((k) => `<option value="ct:${k}"${sel("ct:" + k)}>${esc(contName(k))}</option>`).join("")}</optgroup>
+    <optgroup label="${esc(t("zone.countries"))}">${cs.map((c) => `<option value="${c.iso}"${sel(c.iso)}>${esc(cname(c))}</option>`).join("")}</optgroup></select></label>`;
+}
+function bindZone(mode) {
+  $("#zone")?.addEventListener("change", async (e) => {
+    try { await selectScope(e.target.value); start(mode); } catch { e.target.value = ctx.scope; }
+  });
+}
 async function loadMissing() { if (!missingPool) missingPool = await (await fetch("data/missing.json")).json(); return missingPool; }
 
 // Le mode démo (GitHub Pages) simule le serveur dans le navigateur : il a besoin des mêmes pools que le Worker.
 setResolver(async (scope) => {
+  if (scope.startsWith("ct:")) { const pool = S.continentPool(dams, scope.slice(3)); return { pool, info: S.poolInfo(pool, scope) }; }
   if (scope === "world") return { pool: dams, info: S.WORLD, known: dams, missing: await loadMissing() };
   const pool = await loadCountry(scope).catch(() => null);
   return pool && { pool, info: S.poolInfo(pool, scope) };
@@ -79,7 +109,7 @@ function clueRows(d, level, full = false) {
     [[t("clue.height"), km(d.h, "m")], [t("clue.year"), d.y], [t("clue.type"), typeLabel(d)], [t("clue.volume"), km(d.v, "hm³")], [t("clue.use"), uses(d).join(", ")]],
     [inWorld() || full ? [t("clue.continent"), contLabel(d)] : null, [t("clue.river"), d.r], [t("clue.elev"), d.el != null ? km(d.el, "m") : null]],
     [[t("clue.owner"), d.ow], [t("clue.reservoir"), d.rn && d.rn !== d.n ? d.rn : null], [t("clue.length"), km(d.len, "m")], [t("clue.catch"), km(d.ca, "km²")], [t("clue.power"), d.mw > 0 ? km(d.mw, "MW") : null]],
-    [inWorld() || full ? [t("clue.country"), countryOf(d)] : null, [t("clue.province"), d.s], [t("clue.city"), d.ci]],
+    [multi() || full ? [t("clue.country"), countryOf(d)] : null, [t("clue.province"), d.s], [t("clue.city"), d.ci]],
   ];
   return L.slice(0, full ? 4 : level + 1).flatMap((rows, lv) => rows.filter((r) => r && r[1]).map((r) => [...r, lv]));
 }
@@ -101,11 +131,11 @@ function route() {
   const r = routeName();
   setNav(r);
   const pages = {
-    "": home, explore: () => renderExplore(app, { dams, pools: poolCache }),
-    register: () => renderRegister(app, { api, startMission: () => start("mission") }),
+    "": home,
+    register: () => renderRegister(app, { api, startMission: () => start("mission"), dams, pools: poolCache }),
     glossary: () => renderGlossary(app), about: () => renderAbout(app, { demo: DEMO }),
   };
-  (pages[r] || home)();
+  (pages[r === "explore" ? "register" : r] || home)();
   document.title = t("title");
 }
 document.querySelectorAll("#nav a, #logo").forEach((a) => a.addEventListener("click", (e) => {
@@ -160,16 +190,16 @@ const quickHtml = (modes) => `<div class="row"><button class="cta-main" data-mod
 
 function home() {
   inGame = false; setNav(""); document.body.classList.remove("playing");
-  if (inWorld()) setWorld(); else ctx.name = cname(countries.find((c) => c.iso === ctx.iso));
+  if (inWorld()) setWorld(); else if (ctx.scope.startsWith("ct:")) ctx.name = contName(ctx.scope.slice(3)); else ctx.name = cname(countries.find((c) => c.iso === ctx.iso));
   const modes = inWorld() ? MODES : MODES.filter((m) => m !== "mission");
-  const list = [...countries].sort((a, b) => cname(a).localeCompare(cname(b), getLang()));
+  const list = allScopes().sort((a, b) => cname(a).localeCompare(cname(b), getLang()));
   const total = stats?.total ?? 62362, geo = stats?.geo ?? 42095;
   app.innerHTML = `
     ${inWorld() ? `<section class="hero"><div class="hero-in"><div class="hero-txt"><p class="kicker">${t("hero.kicker")}</p><h1>${t("hero.title")}</h1>
         <p class="hero-sub">${t("hero.sub", { n: fmt(total) })}</p>
         ${quickHtml(modes)}
         <ul class="chips"><li><b>${fmt(dams.length)}</b> ${t("hero.s1")}</li><li><b>${countries.length}</b> ${t("hero.s2")}</li><li><b>${fmt(total - geo)}</b> ${t("hero.s3")}</li></ul></div>${heroSvg()}</div></section>`
-      : `<h1 class="country-h">${t("scope.h1", { c: esc(ctx.name) })}</h1><p class="lead">${t("scope.lead", { c: esc(ctx.name) })}</p>${quickHtml(modes)}`}
+      : `<h1 class="country-h">${t("scope.h1", { c: esc(ctx.name) })}</h1><p class="lead">${t(ctx.scope.startsWith("ct:") ? "scope.lead.ct" : "scope.lead", { c: esc(ctx.name) })}</p>${quickHtml(modes)}`}
     <div class="grid2"><div>
       <div class="panel scope"><label for="cinput"><b>${t("scope.title")}</b> : ${inWorld() ? t("scope.world") : esc(ctx.name)} <span class="muted">(${t("scope.count", { n: fmt(ctx.pool.length) })})</span></label>
         <form class="row" id="cform" autocomplete="off">
@@ -191,11 +221,12 @@ function home() {
   }));
   const pick = async () => {
     const q = norm($("#cinput").value); if (!q) return;
-    const hit = countries.find((c) => norm(c.fr) === q || norm(c.en) === q || norm(c.iso) === q)
-      || (() => { const m = countries.filter((c) => norm(c.fr).startsWith(q) || norm(c.en).startsWith(q)); return m.length === 1 ? m[0] : null; })();
+    const sc = allScopes();
+    const hit = sc.find((c) => norm(c.fr) === q || norm(c.en) === q || norm(c.id) === q)
+      || (() => { const m = sc.filter((c) => norm(c.fr).startsWith(q) || norm(c.en).startsWith(q)); return m.length === 1 ? m[0] : null; })();
     if (!hit) { $("#chint").className = "err small"; $("#chint").textContent = t("scope.err"); return; }
     $("#chint").textContent = t("scope.loading");
-    try { await setCountry(hit.iso); start("map"); } catch { $("#chint").className = "err small"; $("#chint").textContent = t("scope.err"); }
+    try { await selectScope(hit.id); start("map"); } catch { $("#chint").className = "err small"; $("#chint").textContent = t("scope.err"); }
   };
   $("#cform").addEventListener("submit", (e) => { e.preventDefault(); pick(); });
   $("#cinput").addEventListener("input", (e) => { if (!e.inputType || e.inputType === "insertReplacementText") pick(); });
@@ -230,7 +261,7 @@ async function finishGame(mode, token, payload, o) {
   let res;
   try { res = await api("finish", { token, ...payload }); }
   catch (e) { box.innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
-  box.innerHTML = `${o.summary(res)}<div class="bigscore"><span id="bs">0</span><small>${mode === "hilo" ? "" : "pts"}</small></div>
+  box.innerHTML = `${o.summary(res)}<div class="bigscore"><span id="bs">0</span><small>pts</small></div>
     <p class="rankline">${t("end.valid", { s: fmt(res.score), r: res.rank })}</p><div id="comm"></div><div id="xpline"></div>`;
   countUp($("#bs", box), res.score, 1100, fmt);
   if (res.rank <= 3 || (o.celebrate && o.celebrate(res))) confetti(res.rank === 1 ? 220 : 120);
@@ -271,7 +302,8 @@ async function start(mode) {
   try {
     if (mode === "mission") await Promise.all([loadMissing(), fetch("data/bounds.json").then((r) => r.json()).then((b) => { bounds = b; })]);
     const sess = await api("session", { mode, scope: ctx.scope });
-    ({ map: playMap, hilo: playHilo, daily: playDaily, mission: playMission })[mode](sess);
+    ({ map: playMap, daily: playDaily, mission: playMission })[mode](sess);
+    bindZone(mode);
   } catch (e) { inGame = false; app.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
   window.scrollTo({ top: 0 });
 }
@@ -280,7 +312,7 @@ async function start(mode) {
 function playMap({ token, seed }) {
   const { pool, info } = ctx, idx = S.pickMapRounds(pool, seed, info.distinct), guesses = [], recap = [];
   let round = 0, total = 0, guess = null, layers = [], locked = false, lockedAt = 0, hints = 0, shown = 0;
-  app.innerHTML = `<div class="hud"><span id="rd"></span>${switchHtml()}<span id="sc"></span></div>
+  app.innerHTML = `<div class="hud"><span id="rd"></span><span class="hud-tools">${zoneSelect()}${switchHtml()}</span><span id="sc"></span></div>
     <div class="game"><div id="side"></div><div><div id="map"></div><p class="muted small" id="kbd">${t("map.centerhint")}</p>
     <div class="row actions"><button id="ctr" class="ghost">${t("map.center")}</button><button id="ok" disabled>${t("map.validate")}</button><button id="next" class="accent" hidden></button></div></div></div><div id="end"></div>`;
   const place = (lat, lng) => {
@@ -310,7 +342,7 @@ function playMap({ token, seed }) {
     recap.push({ n: d.n, km, pts, hints });
     layers.push(pin(d.la, d.lo, PIN_TRUTH, "pulse").addTo(map), L.polyline([guess, [d.la, d.lo]], { color: "#111a4c", dashArray: "6 6", weight: 2 }).addTo(map));
     map.fitBounds(L.latLngBounds([guess, [d.la, d.lo]]).pad(0.5), { maxZoom: 7 });
-    $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">${reactFor(base)}</div><div class="where">${flag(d, "big")}<div><b>${esc(countryOf(d))}</b>${inWorld() || !(d.s || d.ci) ? "" : `<br><span class="muted">${esc(d.s || d.ci)}</span>`}</div></div>${t("map.dist", { km: fmt(km) })}
+    $("#side").insertAdjacentHTML("beforeend", `<div class="panel result pop"><div class="react">${reactFor(base)}</div><div class="where">${flag(d, "big")}<div><b>${esc(countryOf(d))}</b>${multi() || !(d.s || d.ci) ? "" : `<br><span class="muted">${esc(d.s || d.ci)}</span>`}</div></div>${t("map.dist", { km: fmt(km) })}
       <div class="pts-line">+<span id="rp">0</span>${hints ? ` <small>(−${hints * 10} %)</small>` : ""}</div>${factsHtml(d)}<button class="ghost" id="sheetbtn">${t("sheet.open")}</button>${safeMode() ? "" : `<p class="muted small">${t("map.next2")}</p>`}</div>`);
     countUp($("#rp"), pts, 700, fmt); $("#sheetbtn").addEventListener("click", () => openSheet(d));
     if (base >= 4800) confetti(80);
@@ -330,45 +362,12 @@ function playMap({ token, seed }) {
   render();
 }
 
-// ---------------------------------------------------------------- Mode 2 : plus haut / plus bas
-const hiloFmt = (d, k) => (k === "y" ? d[k] : fmt(d[k]));
-function playHilo({ token, seed }) {
-  const pool = ctx.pool, steps = S.hiloSequence(pool, seed, S.HILO_CAP + 1), answers = [];
-  let i = 0, locked = false;
-  app.innerHTML = `<div class="hud"><span id="streak"></span><span class="muted">${t("hilo.rule")}</span></div><div id="stage"></div><div id="end"></div>`;
-  const render = () => {
-    const { k, a, b } = steps[i], A = pool[a], B = pool[b]; locked = false;
-    $("#streak").innerHTML = `${i >= 3 ? "🔥 " : ""}${t("hilo.streak", { n: i })}`;
-    $("#stage").innerHTML = `<p class="stat-q">${t("hilo.q", { stat: t("stat." + k) })}</p>
-      <div class="versus"><div class="panel vs-card"><h3>${esc(A.n)}</h3><p class="muted">${flag(A)}${esc(placeOf(A))}</p><div class="big">${esc(hiloFmt(A, k))}</div></div>
-      <div class="vs-card panel"><h3>${esc(B.n)}</h3><p class="muted">${flag(B)}${esc(placeOf(B))}</p><div class="big" id="bval">?</div></div></div>
-      <div class="row actions center"><button data-g="h">${t("hilo.hi")}</button><button data-g="l">${t("hilo.lo")}</button></div>`;
-    $("#stage").querySelectorAll("[data-g]").forEach((btn) => btn.addEventListener("click", () => answer(btn.dataset.g)));
-  };
-  const answer = (g) => {
-    if (locked) return; locked = true; answers.push(g);
-    const { k, a, b } = steps[i], ok = S.hiloCorrect(pool[a][k], pool[b][k], g);
-    const bv = $("#bval"); bv.textContent = hiloFmt(pool[b], k); bv.className = "big " + (ok ? "good" : "bad");
-    $("#stage").querySelectorAll(".vs-card")[1].classList.add(ok ? "flash-ok" : "shake");
-    $("#stage").querySelectorAll("button").forEach((x) => (x.disabled = true));
-    setTimeout(() => {
-      if (ok && ++i < S.HILO_CAP) return render();
-      $("#stage").querySelector(".actions").remove();
-      finishGame("hilo", token, { answers }, {
-        summary: () => `<h2>${ok ? t("hilo.perfect") : t("hilo.fail")}</h2><p>${t("hilo.count", { n: i })}</p>`,
-        xp: (r) => r.score * 2, award: (r) => ({ hilo: r.score }), celebrate: (r) => r.score >= 10,
-      });
-    }, 1200);
-  };
-  render();
-}
-
-// ---------------------------------------------------------------- Mode 3 : barrage du jour
+// ---------------------------------------------------------------- Mode 2 : barrage du jour
 function playDaily({ token, seed }) {
   const { pool, info, scope } = ctx, key = `geodam-daily-${scope}-${seed}`, target = pool[S.dailyIndex(pool, seed)];
   if (store.get(key)) {
     const past = JSON.parse(store.get(key));
-    app.innerHTML = `<div class="panel"><h2>${t("daily.played")}</h2><p>${t("daily.playedtxt", { d: esc(seed), n: esc(target.n), c: esc(countryOf(target)) })} ${past.found ? t("daily.res", { n: past.tries, s: fmt(past.score) }) : t("daily.nores")}</p><p class="muted">${t("daily.again")}</p><div id="lb"></div><div class="row"><button id="tohome2">${t("end.home")}</button></div></div>`;
+    app.innerHTML = `<div class="panel"><h2>${t("daily.played")}</h2><div class="row">${zoneSelect()}</div><p>${t("daily.playedtxt", { d: esc(seed), n: esc(target.n), c: esc(countryOf(target)) })} ${past.found ? t("daily.res", { n: past.tries, s: fmt(past.score) }) : t("daily.nores")}</p><p class="muted">${t("daily.again")}</p><div id="lb"></div><div class="row"><button id="tohome2">${t("end.home")}</button></div></div>`;
     $("#tohome2").addEventListener("click", () => route());
     showLeaderboard("daily", $("#lb")); return;
   }
@@ -376,15 +375,16 @@ function playDaily({ token, seed }) {
   let cur = null;
   const m = (v, u) => (v != null && v !== "" ? `${fmt(v)} ${u}` : null);
   const clues = [
-    (d) => [inWorld() ? contLabel(d) : d.s, d.h != null && t("clue.hhigh", { h: d.h })].filter(Boolean).join(" · "),
+    (d) => [inWorld() ? contLabel(d) : multi() ? null : d.s, d.h != null && t("clue.hhigh", { h: d.h })].filter(Boolean).join(" · "),
     (d) => [d.y && t("clue.d1", { y: d.y }), d.t && t("clue.d2", { t: typeLabel(d) })].filter(Boolean).join(" · "),
     (d) => [uses(d).join(", "), m(d.v, "hm³"), d.mw > 0 && m(d.mw, "MW")].filter(Boolean).join(" · "),
     (d) => [d.r && t("clue.d3", { r: d.r }), d.rn && d.rn !== d.n && `${t("clue.reservoir")} : ${d.rn}`].filter(Boolean).join(" · "),
     (d) => [d.ow && `${t("clue.owner")} : ${d.ow}`, d.el != null && `${t("clue.elev")} : ${m(d.el, "m")}`, d.len && `${t("clue.length")} : ${m(d.len, "m")}`].filter(Boolean).join(" · "),
-    (d) => [inWorld() ? t("clue.d4", { c: countryOf(d) }) : d.s && t("clue.d4p", { s: d.s }), t("clue.d5", { i: `${d.n[0]}${"·".repeat(Math.max(0, d.n.length - 1))}` }) + (d.ci ? t("clue.d6", { c: d.ci }) : "")].filter(Boolean).join(" · "),
+    (d) => [multi() ? t("clue.d4", { c: countryOf(d) }) : d.s && t("clue.d4p", { s: d.s }), t("clue.d5", { i: `${d.n[0]}${"·".repeat(Math.max(0, d.n.length - 1))}` }) + (d.ci ? t("clue.d6", { c: d.ci }) : "")].filter(Boolean).join(" · "),
   ];
-  app.innerHTML = `<div class="hud"><span>${t("daily.title", { d: esc(seed) })}${inWorld() ? "" : " — " + esc(ctx.name)}</span>${switchHtml()}<span id="tries"></span></div>
-    <div class="game"><div><div class="panel"><h3>${t("daily.clues")}</h3><ol id="clues" class="cluelist"></ol></div>
+  app.innerHTML = `<div class="hud"><span>${t("daily.title", { d: esc(seed) })}${inWorld() ? "" : " — " + esc(ctx.name)}</span><span class="hud-tools">${zoneSelect()}${switchHtml()}</span><span id="tries"></span></div>
+    <div class="game"><div><details class="panel rules" open><summary>📜 ${t("daily.rules.title")}</summary><ol>${[1, 2, 3, 4, 5].map((i) => `<li>${t("daily.rules." + i, { km: Math.ceil(info.foundKm) })}</li>`).join("")}</ol></details>
+    <div class="panel" style="margin-top:12px"><h3>${t("daily.clues")}</h3><ol id="clues" class="cluelist"></ol></div>
     <div class="panel" style="margin-top:12px"><h3>${t("daily.attempts")}</h3><ul class="attempts" id="att"></ul></div></div>
     <div><div id="map"></div><p class="muted small">${t("map.centerhint")}</p><div class="row actions"><button id="ctr" class="ghost">${t("map.center")}</button><button id="ok" disabled>${t("daily.ok")}</button></div></div></div><div id="end"></div>`;
   let guess = null, over = false;
@@ -405,7 +405,7 @@ function playDaily({ token, seed }) {
     cur = null; $("#ok").disabled = true; guess = null;
     if (found || guesses.length === S.DAILY_TRIES) {
       over = true; $("#ok").hidden = true; $("#ctr").hidden = true; showClues();
-      pin(target.la, target.lo, PIN_TRUTH, "pulse").addTo(map); map.setView([target.la, target.lo], inWorld() ? 5 : 8);
+      pin(target.la, target.lo, PIN_TRUTH, "pulse").addTo(map); map.setView([target.la, target.lo], multi() ? 5 : 8);
       store.set(key, JSON.stringify(S.dailyScore(pool, seed, guesses, info)));
       if (found) confetti(150);
       finishGame("daily", token, { guesses }, {
@@ -417,7 +417,7 @@ function playDaily({ token, seed }) {
   showClues();
 }
 
-// ---------------------------------------------------------------- Mode 4 : mission cartographe
+// ---------------------------------------------------------------- Mode 3 : mission cartographe
 function playMission({ token, seed }) {
   const rounds = S.pickMissionRounds(dams, missingPool, seed), guesses = [];
   let round = 0, guess = null, layers = [], locked = false, lockedAt = 0;

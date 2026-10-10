@@ -31,7 +31,6 @@ const dec = (s) => { try { return JSON.parse(decodeURIComponent(escape(atob(Stri
 const today = () => new Date().toISOString().slice(0, 10);
 const SAMPLE = {   // joueurs fictifs pour que le classement ne soit pas vide en démo
   map: [["Hydro_Hugo", 21840], ["Crête_Clara", 19260], ["Turbine_Tom", 16410], ["Volta_Victor", 12975]],
-  hilo: [["Barrage_Betty", 14], ["Hydro_Hugo", 11], ["Turbine_Tom", 8], ["Volta_Victor", 6]],
   daily: [["Crête_Clara", 5000], ["Hydro_Hugo", 4300], ["Barrage_Betty", 3600], ["Turbine_Tom", 2200]],
   mission: [["Cartographe_Léa", 10780], ["Hydro_Hugo", 9120], ["Crête_Clara", 8260], ["Volta_Victor", 5410]],
 };
@@ -51,7 +50,6 @@ async function demo(path, body) {
     const zone = await resolver(sess.sc); if (!zone) throw fail("invalid_session");
     let res;
     if (sess.m === "map") res = S.mapScore(zone.pool, sess.seed, body.guesses, zone.info);
-    else if (sess.m === "hilo") res = S.hiloScore(zone.pool, sess.seed, body.answers);
     else if (sess.m === "daily") res = S.dailyScore(zone.pool, sess.seed, body.guesses, zone.info);
     else if (sess.m === "mission") res = S.missionScore(zone.known, zone.missing, sess.seed, body.guesses);
     if (!res) throw fail("invalid_game");

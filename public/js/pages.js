@@ -49,11 +49,10 @@ export function openSheet(d) {
 }
 
 // ---------------------------------------------------------------- Explorer
-export function renderExplore(el, { dams, pools }) {
-  el.innerHTML = `<section class="page"><h1>${t("explore.title")}</h1><p class="lead">${t("explore.lead")}</p>
-    <div class="panel"><label class="sr" for="q">${t("explore.search")}</label>
+function exploreBlock(el, { dams, pools }) {
+  el.innerHTML = `<h2>🔎 ${t("explore.title")}</h2><p class="muted">${t("explore.lead")}</p><label class="sr" for="q">${t("explore.search")}</label>
     <input type="search" id="q" class="bigsearch" placeholder="${esc(t("explore.search"))}" autocomplete="off"><p class="muted" id="qinfo">${t("explore.hint")}</p>
-    <ul class="results" id="res"></ul></div></section>`;
+    <ul class="results" id="res"></ul>`;
   const all = () => { const seen = new Set(), out = []; for (const d of [...dams, ...[...pools.values()].flat()]) if (!seen.has(d.id)) { seen.add(d.id); out.push(d); } return out; };
   const hay = new WeakMap();
   const run = () => {
@@ -70,13 +69,13 @@ export function renderExplore(el, { dams, pools }) {
     box.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => openSheet(hits[+b.dataset.i][2])));
   };
   $("#q", el).addEventListener("input", run);
-  $("#q", el).focus();
 }
 const $ = (s, el = document) => el.querySelector(s);
 
 // ---------------------------------------------------------------- Le registre en chiffres
-export async function renderRegister(el, { api, startMission }) {
-  el.innerHTML = `<section class="page"><h1>${t("reg.title")}</h1><p class="lead">${t("reg.lead")}</p><p class="muted">${t("reg.note")}</p><div id="regbody" class="panel">…</div></section>`;
+export async function renderRegister(el, { api, startMission, dams, pools }) {
+  el.innerHTML = `<section class="page"><h1>${t("reg.title")}</h1><p class="lead">${t("reg.lead")}</p><div class="panel" id="exp"></div><div id="regbody" class="panel">…</div><p class="muted">${t("reg.note")}</p></section>`;
+  exploreBlock($("#exp", el), { dams, pools });
   let s;
   try { s = await (await fetch("data/stats.json")).json(); } catch { $("#regbody", el).textContent = t("err.net"); return; }
   const lang = getLang();

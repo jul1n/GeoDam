@@ -34,18 +34,6 @@ const hr = await post("/api/finish", { token: mh.token, guesses: hidx.map((i, k)
 check("indices : 3 indices = -30 % sur la manche", hr.score === 25000 - 1500, JSON.stringify({ s: hr.score, e: hr.error }));
 check("indices : 4 indices refusés", (await post("/api/finish", { token: mh.token, guesses: hidx.map((i) => [dams[i].la, dams[i].lo, 4]) })).status === 400);
 
-// ----- hilo : 4 bonnes réponses puis une erreur -----
-const h = await post("/api/session", { mode: "hilo" });
-const steps = S.hiloSequence(dams, h.seed, 5), ans = [];
-steps.forEach(({ k, a, b }, i) => {
-  const hi = dams[b][k] > dams[a][k];
-  ans.push(i < 4 ? (hi ? "h" : "l") : (hi ? "l" : "h"));
-});
-await sleep(6500);
-r = await post("/api/finish", { token: h.token, answers: ans });
-check("hilo : série de 4", r.score === 4, JSON.stringify(r));
-check("hilo : triche (pas d'erreur finale) refusée", (await post("/api/finish", { token: h.token, answers: ans.slice(0, 4) })).status === 400);
-
 // ----- daily : trouvé du 1er coup -----
 const d = await post("/api/session", { mode: "daily" });
 const t = dams[S.dailyIndex(dams, d.seed)];
@@ -74,13 +62,21 @@ for (const iso of ["FR", "CN"]) {
   check(`${iso} : classement séparé du monde`, clb.entries.length >= 1 && clb.entries.every((e) => e.name.startsWith("Pays")));
 }
 check("scope inconnu refusé", (await post("/api/session", { mode: "map", scope: "XX" })).status === 400);
-const hs = await post("/api/session", { mode: "hilo", scope: "FR" });
-const hp = JSON.parse(readFileSync(new URL("../public/data/country/FR.json", import.meta.url), "utf8"));
-const hsteps = S.hiloSequence(hp, hs.seed, 3);
-const hans = hsteps.map(({ k, a, b }, i) => { const hi = hp[b][k] > hp[a][k]; return i < 2 ? (hi ? "h" : "l") : (hi ? "l" : "h"); });
-await sleep(3800);
-check("hilo pays : série de 2", (await post("/api/finish", { token: hs.token, answers: hans })).score === 2);
-// un token du mode pays ne peut pas être rejoué contre le pool monde : la graine/zone sont signées
+// ----- continent : sous-ensemble du monde, manches de pays distincts, classement propre -----
+{
+  const key = "EUROPE", pool = S.continentPool(dams, key), info = S.poolInfo(pool, "ct:" + key);
+  const cs = await post("/api/session", { mode: "map", scope: "ct:" + key });
+  const rounds = S.pickMapRounds(pool, cs.seed, info.distinct);
+  check("continent : 5 manches, pays distincts", rounds.length === 5 && new Set(rounds.map((i) => pool[i].iso)).size === 5);
+  await sleep(15500);
+  const cr = await post("/api/finish", { token: cs.token, guesses: rounds.map((i) => [pool[i].la, pool[i].lo, 0]) });
+  check(`continent : score parfait (échelle ${Math.round(info.scale)} km)`, cr.score === 25000, JSON.stringify({ s: cr.score, e: cr.error }));
+  check("continent : enregistré", (await post("/api/submit", { claim: cr.claim, name: "Europe " + tag })).ok === true);
+  const clb = await (await fetch(`${BASE}/api/leaderboard?mode=map&scope=ct:${key}`)).json();
+  check("continent : classement séparé", clb.entries.length === 1 && clb.entries[0].name.startsWith("Europe"));
+  check("continent inconnu refusé", (await post("/api/session", { mode: "map", scope: "ct:XX" })).status === 400);
+  check("« plus haut / plus bas » retiré", (await post("/api/session", { mode: "hilo" })).status === 400);
+}
 // ----- mission cartographe : contributions + export protégé -----
 const missing = JSON.parse(readFileSync(new URL("../public/data/missing.json", import.meta.url), "utf8"));
 const ms = await post("/api/session", { mode: "mission" });

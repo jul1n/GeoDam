@@ -1,6 +1,16 @@
 // Textes ajoutés pour : navigation, accueil « hero », indices, mission cartographe, profil, pages Explorer / Registre / Glossaire / À propos.
 export const EXTRA = {
   fr: {
+    "zone.label": "Zone de jeu", "zone.continents": "Continents", "zone.countries": "Pays",
+    "scope.hint": "Tapez un pays ou un continent (ou ouvrez la liste). Chine et États-Unis sont jouables en entier.",
+    "scope.lead.ct": "Les barrages de {c}, avec leur propre classement : cartes et barrage du jour propres à ce continent.",
+    "daily.rules.title": "Règles du barrage du jour",
+    "daily.rules.1": "Un barrage mystère, le même pour tous les joueurs aujourd'hui.",
+    "daily.rules.2": "Vous avez 6 essais : cliquez sur la carte là où vous pensez qu'il se trouve.",
+    "daily.rules.3": "Après chaque erreur : la distance, une flèche de direction et un nouvel indice.",
+    "daily.rules.4": "Trouvé = à moins de {km} km. Score : 5 000 points du premier coup, −700 par essai supplémentaire.",
+    "daily.rules.5": "Un seul score par jour et par zone. Revenez demain !",
+    "foot.glossary": "Glossaire",
     "skip": "Aller au contenu", "safe.label": "Mode sécurisé", "safe.hint": "Activé : un bouton Valider confirme votre réponse. Désactivé : un clic sur la carte valide directement.", "map.hint1": "Un clic sur la carte valide votre réponse.", "map.next2": "Cliquez de nouveau sur la carte (au bout de 2 s) pour passer à la suite.", "hero.quick": "Ou essayez :",
     "nav.play": "Jouer", "nav.explore": "Explorer", "nav.register": "Le registre", "nav.glossary": "Glossaire", "nav.about": "À propos",
     "hero.kicker": "Le jeu des grands barrages", "hero.title": "Où est ce barrage ?",
@@ -81,6 +91,16 @@ export const EXTRA = {
     "foot.about": "À propos & mentions légales", "foot.src": "Code source",
   },
   en: {
+    "zone.label": "Play area", "zone.continents": "Continents", "zone.countries": "Countries",
+    "scope.hint": "Type a country or a continent (or open the list). China and the USA are fully playable.",
+    "scope.lead.ct": "The dams of {c}, with their own leaderboard: maps and dam of the day specific to this continent.",
+    "daily.rules.title": "Dam of the day rules",
+    "daily.rules.1": "One mystery dam, the same for every player today.",
+    "daily.rules.2": "You get 6 tries: click on the map where you think it is.",
+    "daily.rules.3": "After each miss: the distance, a direction arrow and a new clue.",
+    "daily.rules.4": "Found = within {km} km. Score: 5,000 points on the first try, −700 per extra try.",
+    "daily.rules.5": "One score per day and per area. Come back tomorrow!",
+    "foot.glossary": "Glossary",
     "skip": "Skip to content", "safe.label": "Safe mode", "safe.hint": "On: a Confirm button validates your answer. Off: a click on the map validates it directly.", "map.hint1": "One click on the map validates your answer.", "map.next2": "Click the map again (after 2 s) to move on.", "hero.quick": "Or try:",
     "nav.play": "Play", "nav.explore": "Explore", "nav.register": "The Register", "nav.glossary": "Glossary", "nav.about": "About",
     "hero.kicker": "The large dams game", "hero.title": "Where is this dam?",

@@ -1,7 +1,7 @@
 # GéoDam
 
 Jeu web bilingue (FR/EN) autour du **Registre mondial des barrages** de la CIGB/ICOLD (62 362 barrages, édition 2025).
-Quatre défis sans photo, un profil joueur (XP, niveaux, badges), des pages « site public » (explorer, registre en chiffres, glossaire) et une
+Trois défis sans photo, un profil joueur (XP, niveaux, badges), des pages « site public » (explorer, registre en chiffres, glossaire) et une
 **mission cartographe** qui fait compléter par les joueurs les ~20 000 barrages sans coordonnées.
 
 - **Démo** (GitHub Pages, serveur simulé dans le navigateur) : https://jul1n.github.io/GeoDam/ — à activer une fois, voir « Démo GitHub Pages ».
@@ -16,11 +16,10 @@ Quatre défis sans photo, un profil joueur (XP, niveaux, badges), des pages « s
 | Mode | Principe |
 |---|---|
 | 🗺️ Carte muette | 5 manches : placer le barrage. 3 niveaux d'indices payants (−10 % chacun) : contexte → exploitant/réservoir/dimensions → pays/ville. |
-| ⚖️ Plus haut / plus bas | 7 grandeurs (hauteur, volume, année, puissance, longueur de crête, altitude, bassin versant). |
-| 📅 Barrage du jour | Même barrage pour tous, 6 essais, un indice de plus à chaque erreur. |
+| 📅 Barrage du jour | Même barrage pour tous, 6 essais, un indice de plus à chaque erreur. Règles résumées dans un encart repliable de la partie. |
 | 🛰️ Mission cartographe | 5 manches : 2 barrages « étalons » (position connue, mesurent la fiabilité) + 3 barrages **sans coordonnées** : la proposition est enregistrée. |
 
-Zone de jeu : le monde (9 000 barrages, 700 max par pays) ou **un pays** (83 pays, Chine et États-Unis complets) via une liste avec recherche au clavier.
+Zone de jeu : le monde (9 000 barrages, 700 max par pays), **un continent** (6 zones, sous-ensemble du pool monde, manches de pays distincts) ou **un pays** (83 pays, Chine et États-Unis complets). On la choisit sur l'accueil (recherche au clavier) ou **en cours de partie** via une liste déroulante qui relance le même défi dans la nouvelle zone.
 
 ## Gamification de la donnée et de son utilité
 
@@ -29,7 +28,7 @@ Zone de jeu : le monde (9 000 barrages, 700 max par pays) ou **un pays** (83 pay
   Quand ≥ 3 avis convergent à moins de 50 km, le barrage passe « prêt à vérifier ».
 - **Export pour l'équipe du registre** (protégé) : `GET /api/admin/contributions?format=csv` avec `Authorization: Bearer <ADMIN_TOKEN>` → un candidat par barrage (nom, pays, coordonnées médianes, nombre d'avis, dispersion en km, statut).
 - **Utilité** : la page *Le registre* montre la complétude de chaque champ et **pourquoi il compte** ; chaque manche affiche « à quoi sert ce barrage » ; une jauge suit la progression de la communauté.
-- **Profil local** (sans compte) : XP, 9 niveaux, 10 badges, série de jours. Stocké dans le navigateur.
+- **Profil local** (sans compte) : XP, 9 niveaux, 9 badges, série de jours. Stocké dans le navigateur.
 
 ## Correspondance avec le cahier des charges ICOLD (refonte du site)
 
@@ -40,8 +39,8 @@ Le prototype ne remplace pas le site de l'ICOLD ; il montre comment certaines at
 | Design moderne, ordinateur/tablette/téléphone, français et anglais | ✅ responsive, FR/EN (détection + sélecteur), installable (PWA) |
 | Accessibilité | ✅ lien d'évitement, focus visible, libellés ARIA, alternative clavier à la carte (« placer au centre »), `prefers-reduced-motion`, contrastes |
 | Registre : contenu, chiffres clés, accès à l'application dédiée | ✅ page *Le registre* + lien officiel ; **la base elle-même n'est pas recréée** |
-| Recherche et pages par barrage | ✅ *Explorer* (recherche multi-champs) + fiche barrage |
-| Dictionnaire technique multilingue | 🟡 extrait de 23 termes FR/EN + quiz, lien vers le dictionnaire complet |
+| Recherche et pages par barrage | ✅ recherche multi-champs intégrée à la page *Le registre* + fiche barrage |
+| Dictionnaire technique multilingue | 🟡 glossaire discret (pied de page) : 23 termes FR/EN + quiz, lien vers le dictionnaire complet |
 | Mentions légales, confidentialité, messages bilingues | ✅ page *À propos* (éditeur à renseigner avant mise en ligne) |
 | Statistiques et outils pour l'équipe | 🟡 export CSV des contributions, jauge de progression |
 | Hébergement UE, sauvegardes, reprise par un autre prestataire | 🟡 voir plus bas ; code ouvert et documenté |

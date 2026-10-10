@@ -1,16 +1,14 @@
 // Logique de jeu partagée client + serveur : le Worker (ou le mode démo) rejoue les parties pour recalculer le score.
 export const MAP_ROUNDS = 5;
 export const DAILY_TRIES = 6;
-export const HILO_CAP = 60;
 export const MAX_HINTS = 3;       // indices payants en carte muette : -10 % du score de la manche par indice
 export const HINT_COST = 0.1;
 export const MISSION_KNOWN = 2;   // manches « étalon » (coordonnées connues) servant à pondérer la confiance
 export const MISSION_UNKNOWN = 3; // manches où le joueur propose une localisation pour un barrage sans coordonnées
 export const MISSION_BONUS = 500; // points par contribution
-export const HILO_STATS = {
-  h: "Hauteur (m)", v: "Volume du réservoir (hm³)", y: "Année de mise en service", mw: "Puissance installée (MW)",
-  len: "Longueur de crête (m)", el: "Altitude (m)", ca: "Bassin versant (km²)",
-};
+// Continents jouables : regroupent les valeurs « Continent » du registre. Scope = "ct:" + clé (ex. "ct:EUROPE").
+export const CONTINENTS = { EUROPE: ["EUROPE"], ASIA: ["ASIA"], AFRICA: ["AFRICA"], NAMERICA: ["AMERICA N.", "AMERICA C."], SAMERICA: ["AMERICA S."], OCEANIA: ["AUSTRAL-ASIA"] };
+export const continentPool = (dams, key) => dams.filter((d) => CONTINENTS[key]?.includes(d.ct));
 
 export function xfnv1a(str) {
   let h = 2166136261 >>> 0;
@@ -56,7 +54,8 @@ export function poolInfo(dams, scope) {
   if (scope === "world") return WORLD;
   const [s, w, n, e] = robustBox(dams);
   const scale = Math.min(1500, Math.max(30, distanceKm(s, w, n, e) / 6));
-  return { scale, foundKm: Math.max(3, scale / 60), distinct: false };
+  // un continent mélange des pays (manches de pays distincts) ; un pays n'en a qu'un
+  return { scale, foundKm: Math.max(3, scale / 60), distinct: scope.startsWith("ct:") };
 }
 
 const okPoint = (p, len = 2) => Array.isArray(p) && p.length === len && Math.abs(p[0]) <= 90 && p.every(Number.isFinite);
@@ -81,45 +80,7 @@ export function mapScore(dams, seed, guesses, info = WORLD) {
   return { score: rounds.reduce((s, r) => s + r.pts, 0), rounds };
 }
 
-// ---------- Mode 2 : plus haut / plus bas ----------
-const validCache = new WeakMap();
-const statOk = (d, k) => d[k] != null && (k === "y" || k === "el" || d[k] > 0);
-function validIdx(dams) {
-  let v = validCache.get(dams);
-  if (!v) {
-    v = {};
-    for (const k of Object.keys(HILO_STATS)) v[k] = dams.flatMap((d, i) => (statOk(d, k) ? [i] : []));
-    validCache.set(dams, v);
-  }
-  return v;
-}
-export function hiloSequence(dams, seed, n) {
-  const r = rngFrom("hilo:" + seed), valid = validIdx(dams), steps = [];
-  let a = Math.floor(r() * dams.length);
-  for (let i = 0; i < n; i++) {
-    const ks = Object.keys(HILO_STATS).filter((k) => statOk(dams[a], k) && valid[k].length >= 8);
-    const k = ks[Math.floor(r() * ks.length)], list = valid[k];
-    let b = a;
-    for (let g = 0; g < 100 && (b === a || dams[b][k] === dams[a][k]); g++) b = list[Math.floor(r() * list.length)];
-    steps.push({ k, a, b });
-    a = b;
-  }
-  return steps;
-}
-export const hiloCorrect = (va, vb, guess) => vb === va || (guess === "h" ? vb > va : vb < va);
-export function hiloScore(dams, seed, answers) {
-  if (!Array.isArray(answers) || !answers.length || answers.length > HILO_CAP + 1 || !answers.every((x) => x === "h" || x === "l")) return null;
-  const steps = hiloSequence(dams, seed, answers.length);
-  let s = 0;
-  for (let i = 0; i < answers.length; i++) {
-    const { k, a, b } = steps[i];
-    if (!hiloCorrect(dams[a][k], dams[b][k], answers[i])) return i === answers.length - 1 ? { score: s } : null; // doit s'arrêter à la 1re erreur
-    s++;
-  }
-  return s >= HILO_CAP ? { score: s } : null; // pas d'erreur : valide seulement si plafond atteint
-}
-
-// ---------- Mode 3 : barrage du jour ----------
+// ---------- Mode 2 : barrage du jour ----------
 export function dailyIndex(dams, date) {
   const top = dams.flatMap((d, i) => (d.f === 3 ? [i] : []));
   return top[xfnv1a("daily:" + date) % top.length];
@@ -137,7 +98,7 @@ export function dailyScore(dams, date, guesses, info = WORLD) {
   return { score: Math.round(1400 * Math.exp(-best / info.scale)), found: false, tries: DAILY_TRIES };
 }
 
-// ---------- Mode 4 : mission cartographe (compléter les coordonnées manquantes du registre) ----------
+// ---------- Mode 3 : mission cartographe (compléter les coordonnées manquantes du registre) ----------
 // 5 manches : 2 « étalons » (barrages connus, notés) + 3 barrages SANS coordonnées (le joueur propose un emplacement).
 export function pickMissionRounds(known, missing, seed) {
   const r = rngFrom("mission:" + seed), k = [], m = [];

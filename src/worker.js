@@ -1,12 +1,12 @@
 import dams from "../public/data/dams.json";
 import countries from "../public/data/countries.json";
 import missing from "../public/data/missing.json";
-import { mapScore, hiloScore, dailyScore, missionScore, consensus, poolInfo, MAP_ROUNDS } from "../public/js/shared.js";
+import { mapScore, dailyScore, missionScore, consensus, poolInfo, continentPool, CONTINENTS, MAP_ROUNDS } from "../public/js/shared.js";
 
-const MODES = ["map", "hilo", "daily", "mission"];
+const MODES = ["map", "daily", "mission"];
 const TOP_N = 50;            // il faut être dans le top 50 pour pouvoir inscrire son nom
 const SESSION_TTL = 2 * 3600 * 1000;
-const MIN_MS = { map: 3000 * MAP_ROUNDS, mission: 3000 * MAP_ROUNDS, daily: 3000, hilo: 1200 }; // temps minimum plausible (par manche / par réponse)
+const MIN_MS = { map: 3000 * MAP_ROUNDS, mission: 3000 * MAP_ROUNDS, daily: 3000 }; // temps minimum plausible (par manche / par réponse)
 const NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N} _.\-]{1,15}$/u;
 const SUBMITS_PER_HOUR = 10;
 const CONTRIB_PER_HOUR = 60;      // propositions de coordonnées max par IP et par heure
@@ -18,6 +18,10 @@ const poolCache = new Map(); // ISO -> {pool, info} (reste en mémoire tant que 
 // pool de barrages de la zone de jeu : le monde (embarqué) ou un pays (fichier statique servi par ASSETS)
 async function getPool(env, request, scope) {
   if (scope === "world") return { pool: dams, info: poolInfo(dams, "world") };
+  if (scope.startsWith("ct:")) {   // continent : sous-ensemble du pool monde
+    if (!poolCache.has(scope)) { const pool = continentPool(dams, scope.slice(3)); poolCache.set(scope, { pool, info: poolInfo(pool, scope) }); }
+    return poolCache.get(scope);
+  }
   if (!poolCache.has(scope)) {
     const r = await env.ASSETS.fetch(new URL(`/data/country/${scope}.json`, request.url));
     if (!r.ok) return null;
@@ -26,7 +30,7 @@ async function getPool(env, request, scope) {
   }
   return poolCache.get(scope);
 }
-const okScope = (sc) => sc === "world" || ISOS.has(sc);
+const okScope = (sc) => sc === "world" || ISOS.has(sc) || (typeof sc === "string" && sc.startsWith("ct:") && !!CONTINENTS[sc.slice(3)]);
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
@@ -81,12 +85,11 @@ async function finish(request, env) {
   if (!zone) return fail("invalid_session", 401);
   let res;
   if (sess.m === "map") res = mapScore(zone.pool, sess.seed, body.guesses, zone.info);
-  else if (sess.m === "hilo") res = hiloScore(zone.pool, sess.seed, body.answers);
   else if (sess.m === "daily") res = dailyScore(zone.pool, sess.seed, body.guesses, zone.info);
   else if (sess.m === "mission") res = missionScore(dams, missing, sess.seed, body.guesses);
   if (!res) return fail("invalid_game");
 
-  const units = sess.m === "map" || sess.m === "mission" ? 1 : sess.m === "daily" ? body.guesses.length : body.answers.length;
+  const units = sess.m === "daily" ? body.guesses.length : 1;
   if (age < MIN_MS[sess.m] * units) return fail("too_fast", 422);
 
   const period = periodFor(sess.m, sess);
