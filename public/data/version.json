@@ -1,0 +1,364 @@
+{
+  "version": "wrd-2025-v1",
+  "sourceEdition": "ICOLD WRD 2025",
+  "publicDams": 33857,
+  "worldPool": 9000,
+  "files": {
+    "data/bounds.json": {
+      "bytes": 5520,
+      "sha256": "723d0c63f96e7c7d4f559df75cfb9856f572609e339fb7edb7ad5d23c89f1f20"
+    },
+    "data/countries.json": {
+      "bytes": 4679,
+      "sha256": "f446b565e9fde55c75015643d32559cd33ed9ae20ac2953833ef587d50cf214a"
+    },
+    "data/country/AL.json": {
+      "bytes": 98326,
+      "sha256": "ff030a0b4faa6b8d790bfb1581dce6def432b2a8dd318b362b3fac4418837047"
+    },
+    "data/country/AM.json": {
+      "bytes": 10116,
+      "sha256": "b224a54655fa13a359055b19f3053cfe99858045da197719fcb30f7094b8582a"
+    },
+    "data/country/AR.json": {
+      "bytes": 43147,
+      "sha256": "82193cf2705922b8aec9df35fc6e0ca0e254961f1a2d2f42634fbed255d86416"
+    },
+    "data/country/AT.json": {
+      "bytes": 73743,
+      "sha256": "6cd4dab48853d9148616b6acf08535d9f19c93c1857a40aa6bbbb027a8b0a3bf"
+    },
+    "data/country/AU.json": {
+      "bytes": 180497,
+      "sha256": "0a99a6d54b512088c1488dba9676e36c2d5743d8f5716787592d59fb4606384c"
+    },
+    "data/country/AZ.json": {
+      "bytes": 8169,
+      "sha256": "622a21d9904f27b6a65c911f5ca1c05d37b63ef881e95b7546f7f9cf48eb4626"
+    },
+    "data/country/BA.json": {
+      "bytes": 9730,
+      "sha256": "a33e7e336583375295a2f836e9f4885c145c866a7e731d508b28d660281a23fc"
+    },
+    "data/country/BF.json": {
+      "bytes": 6123,
+      "sha256": "8787913df15b5ec7e9ff25dec4088824db72f3663e620679b398cb379991cd52"
+    },
+    "data/country/BG.json": {
+      "bytes": 45123,
+      "sha256": "a536d57aeede33ee28adf37f1ec098396cc173c42112aefda20f94f2f3ce7b9e"
+    },
+    "data/country/BO.json": {
+      "bytes": 20169,
+      "sha256": "dba7916620fadb3a4beadc02f0178a9a1113ed4861189ee9903a9177cad53483"
+    },
+    "data/country/BR.json": {
+      "bytes": 162928,
+      "sha256": "63a2fca6cb361ed8a83e11a06aca3194272d8349a0cc1958b708743608d7cd27"
+    },
+    "data/country/BW.json": {
+      "bytes": 7621,
+      "sha256": "4328f5dd4734a2481eb6fb54d73303743e0b24b37ca11063c6baf5f23cb20569"
+    },
+    "data/country/CA.json": {
+      "bytes": 218182,
+      "sha256": "2b7d2cfc7affe7740964f68cbf477251c9a0d5e7505bc9102aa1d1f5b377946b"
+    },
+    "data/country/CD.json": {
+      "bytes": 8182,
+      "sha256": "282d5781c5eb01c3272d16d9b8391e56a0e004b7dee3d1465473ef9e8448baba"
+    },
+    "data/country/CH.json": {
+      "bytes": 52819,
+      "sha256": "337058cfb7edc8b1281fbf6630a03d40aecf3d82632c0185858c82e6be3135f3"
+    },
+    "data/country/CI.json": {
+      "bytes": 10095,
+      "sha256": "5117dfb1ac6f6bc0133428f058a0d7dcf1c833974189a8f8847875de4d859b5b"
+    },
+    "data/country/CL.json": {
+      "bytes": 25570,
+      "sha256": "943d4543fcf6a01e67cac5143b6c50586f2b01a02bf94fcd5ca0449bd5aaacb4"
+    },
+    "data/country/CN.json": {
+      "bytes": 1972551,
+      "sha256": "ae89061b77104e303d45b4da867e68e434aa666b886058cd5474cf993966281d"
+    },
+    "data/country/CO.json": {
+      "bytes": 17194,
+      "sha256": "e1c4850d3d99245f326472a9df3348650210ca90ba8bffbfc714fa2a7296c4ca"
+    },
+    "data/country/CU.json": {
+      "bytes": 27415,
+      "sha256": "7d6259ad5a5ab11d5d5afb0fa9f26723863625ab63d3b9e0b877a978d5daae9e"
+    },
+    "data/country/CY.json": {
+      "bytes": 16917,
+      "sha256": "b34566f766efdc689e410176e475481cbc17a8089b505f1f1554e7fd529f08a6"
+    },
+    "data/country/CZ.json": {
+      "bytes": 33613,
+      "sha256": "2a703263418f1216a503ddecbd57526475d50f7d7f1ea356e162701f6c956525"
+    },
+    "data/country/DE.json": {
+      "bytes": 94164,
+      "sha256": "b9fda9c5a0ac320551e536a3b50f08bc9df23a7f37eaef0f95dc5dde600faefe"
+    },
+    "data/country/DO.json": {
+      "bytes": 6507,
+      "sha256": "f7a193f2f8918d3f6bf4b1887d81a9f8753d37a6afbfefc3030b3e48b3bcadf7"
+    },
+    "data/country/DZ.json": {
+      "bytes": 32480,
+      "sha256": "2ec57dd92f796c48509fb2601445102588e971d89f7298b9d1645b86db0c05ff"
+    },
+    "data/country/ES.json": {
+      "bytes": 309585,
+      "sha256": "ce55c75ab68e9d79762642b22425d15649438b1990554642cf3c94381a384dfc"
+    },
+    "data/country/ET.json": {
+      "bytes": 9060,
+      "sha256": "725a921bfed8ee9fa5e46032d0eb6c4fa246841e40500757be2ce4fa6fa0ae89"
+    },
+    "data/country/FI.json": {
+      "bytes": 16044,
+      "sha256": "485710bdc3ac8bfc7203dcdf60afe0f6b1a4f3dfa2a757e229b9de002ee9ce75"
+    },
+    "data/country/FR.json": {
+      "bytes": 193867,
+      "sha256": "e7157fdd536e996a4ab7904814e4ef86367b86e6632efe608d7f0c22d336f074"
+    },
+    "data/country/GB.json": {
+      "bytes": 152221,
+      "sha256": "e099424398c55790cb4706405cc7a0525bc486c0829cbc9455df25cae8576f1b"
+    },
+    "data/country/GE.json": {
+      "bytes": 6464,
+      "sha256": "d073aaa34ae3657d55d4879b7cb9d8c5dac4d2045035061a6789643ca582e427"
+    },
+    "data/country/GH.json": {
+      "bytes": 8243,
+      "sha256": "e57035bdc5af77316162f486e8aca42794760eb3527f0b4ac2c2957e07778c5f"
+    },
+    "data/country/GR.json": {
+      "bytes": 42988,
+      "sha256": "570478103d977e77457da3323e236d36f470f0792751905d901d2ee80655b551"
+    },
+    "data/country/HK.json": {
+      "bytes": 11634,
+      "sha256": "b1b91e9827019a5232ee90d65239e1150c8ca919e42d6a8cac6587b81c9423e5"
+    },
+    "data/country/HR.json": {
+      "bytes": 8510,
+      "sha256": "cc1c25317343acc82e13afce266f706d44bc987c33756cc211da49cd5eea1494"
+    },
+    "data/country/ID.json": {
+      "bytes": 62170,
+      "sha256": "66fd36f647b0512a6727fbb9ba26f00d917d2b154cabd755034cf463108fadc3"
+    },
+    "data/country/IN.json": {
+      "bytes": 846377,
+      "sha256": "382c3e11f3f3f34700ab321383d2b32239bf6e6095be185106a2ce1f1cf8a43c"
+    },
+    "data/country/IQ.json": {
+      "bytes": 5505,
+      "sha256": "f153210c03c0e5eff905ce396e15a87487172ea7630e19e52c48a75528428041"
+    },
+    "data/country/IR.json": {
+      "bytes": 170664,
+      "sha256": "b14b6075144431ca66961f5738b8ed120d08d75f0d698762a1aa05618a7d40cf"
+    },
+    "data/country/IS.json": {
+      "bytes": 8371,
+      "sha256": "13f07937871fa98b7f6394d204bc2ace2ec255df62a3bbdf053be8e23cfbc241"
+    },
+    "data/country/IT.json": {
+      "bytes": 147307,
+      "sha256": "51e4fbb4a74a118df682e7eeb8b5fe35939a5cca7684165993546bcac16f4ecf"
+    },
+    "data/country/JP.json": {
+      "bytes": 577879,
+      "sha256": "fc0a74cd0d92253b7f9b1a9130069c2edb927102ff4bc939f5fa92409a720831"
+    },
+    "data/country/KE.json": {
+      "bytes": 9309,
+      "sha256": "8a2818bfdb50f5da557ccc0e705a1b01d2491d04f89794039811ba14be3a3de8"
+    },
+    "data/country/KG.json": {
+      "bytes": 6596,
+      "sha256": "11286ca06727c617af2f520eb5e339ffa6305dfbcf51b79fe4c522169fc4b44b"
+    },
+    "data/country/KP.json": {
+      "bytes": 15671,
+      "sha256": "8a39bad0ca02f3ec84dbcb03303d5817e6d1b98a4b00b0333b3c3c87086c3790"
+    },
+    "data/country/KR.json": {
+      "bytes": 373957,
+      "sha256": "c9b82c1c4a958877a294666dac1529ba0900c1cf4a0c50178f760daf2a411794"
+    },
+    "data/country/KZ.json": {
+      "bytes": 10156,
+      "sha256": "79b87a976a3e129ae747aebd6b1872ce07b436fde68a5d9ea5b4eb11d2cdabbd"
+    },
+    "data/country/LA.json": {
+      "bytes": 26885,
+      "sha256": "85c157cb45db6219cdb70e1ba58ccb7e5f9f344fb0019e557aae36fce44948d1"
+    },
+    "data/country/LK.json": {
+      "bytes": 18685,
+      "sha256": "86b32ec9cc2d21961eafd0101e4f727f5d38031558c8bca54720666f50f9a0d5"
+    },
+    "data/country/MA.json": {
+      "bytes": 38759,
+      "sha256": "c67d730e84f16a94105bfd25b498bcd119935f17b49153f5d6d01fb026edab9d"
+    },
+    "data/country/MK.json": {
+      "bytes": 9975,
+      "sha256": "e77de42cdf41372fda6fbe3dc80c086c1cbac5e1887c81d7957393f28718a108"
+    },
+    "data/country/MM.json": {
+      "bytes": 28787,
+      "sha256": "1e20acb434d95b341db2e83c3a0ba038319a7a90912b3ca69e4ecee14622ecff"
+    },
+    "data/country/MX.json": {
+      "bytes": 312311,
+      "sha256": "0e33ce42a9a2da076fd924361f0d8accdab809085b94860551adcb4e20ca53cf"
+    },
+    "data/country/MY.json": {
+      "bytes": 23447,
+      "sha256": "373b69fd55ce03917a9549c8ff5c3e7c8f1dd32f38adecd916957c60d343b489"
+    },
+    "data/country/NG.json": {
+      "bytes": 27795,
+      "sha256": "5e0e7bacaf37b406d3070bc4ab14adeeacd4890a9eccacfbf0e93645a42225f7"
+    },
+    "data/country/NO.json": {
+      "bytes": 100974,
+      "sha256": "3e4cd9efa5729de196de4ae7ebea92e74d56a3afae6d855b196b5297fdb07c2f"
+    },
+    "data/country/NZ.json": {
+      "bytes": 26882,
+      "sha256": "abf441e4cf129e973e3b721abe7ec5da1dafacb5efaf6d0bb52310bf34d83805"
+    },
+    "data/country/PA.json": {
+      "bytes": 7640,
+      "sha256": "511e5d526e078592f90a5f70bda16428173ba064c40edf0fae94b9fd3778cf69"
+    },
+    "data/country/PE.json": {
+      "bytes": 27820,
+      "sha256": "5fdcb2723b509c58344eb6529e1c2bbb0144e6809c5542ce2cf5757662bc09ad"
+    },
+    "data/country/PH.json": {
+      "bytes": 7356,
+      "sha256": "50f4bcf32dd042685b7c09b57b298e64806741fb63406ff4e7512427e2114836"
+    },
+    "data/country/PK.json": {
+      "bytes": 33824,
+      "sha256": "19c94e28751c9b4ea7af1bba7899d1cc7a5ce8ffe58b590658089d19845c5c51"
+    },
+    "data/country/PL.json": {
+      "bytes": 13320,
+      "sha256": "0275e8a334610d5bc0130de62e6e0738f569266eca40012f5e3b42ba147c0c41"
+    },
+    "data/country/PR.json": {
+      "bytes": 10357,
+      "sha256": "fd9db08fbb271f9a7be624e85f802e057f8dd7d566acd1764dcb448f6dc43737"
+    },
+    "data/country/PT.json": {
+      "bytes": 68548,
+      "sha256": "d3a9366efba68efa6b5f50a580eff3af66b0e28dbffd788bdca9da390934bf2a"
+    },
+    "data/country/RO.json": {
+      "bytes": 52577,
+      "sha256": "0ad18a43a538f4bf15bd112257fa1f63894b5aef94544eff61573f8606b17411"
+    },
+    "data/country/RS.json": {
+      "bytes": 16043,
+      "sha256": "73351d31c845b455cee2b0d88f5b06c3e631be018fc6f21a23ae0b7971c00a3f"
+    },
+    "data/country/RU.json": {
+      "bytes": 36087,
+      "sha256": "fa44d08df32c21fc993e1c2941bd8712446969cba1df2c41249108ca4ec8b2ea"
+    },
+    "data/country/SA.json": {
+      "bytes": 8361,
+      "sha256": "7f8f93f1bca594a2056e9b00833447d8fbb4e0236f3fc1ca70966d0f6dd478ef"
+    },
+    "data/country/SE.json": {
+      "bytes": 61221,
+      "sha256": "9ba633e58e1e0252917c73de325e56cfee07b822cfbba11a806d16e4235da8f0"
+    },
+    "data/country/SI.json": {
+      "bytes": 10245,
+      "sha256": "7576e4a2ea7a363d53abb77ea9f0cb4a1753ae24dfcf6e8dcc259ec308a5cf47"
+    },
+    "data/country/SK.json": {
+      "bytes": 12352,
+      "sha256": "8ac90f6ada3774e2654663df4e194f1cc63661a16145d8778250ab412404d5a1"
+    },
+    "data/country/SY.json": {
+      "bytes": 5890,
+      "sha256": "3ca91525427ebcd775c934fb0e80fc9264c33bc9c29871b348815d9355c9ffb9"
+    },
+    "data/country/TH.json": {
+      "bytes": 31546,
+      "sha256": "c00a8c87b5fcb1e9a7dd7ae9e9fd6f4ab9d86738540ef5fde54494ca60722c65"
+    },
+    "data/country/TN.json": {
+      "bytes": 18983,
+      "sha256": "2b86d80cbe0b4969cca3c9136299f767e238af29eba66de20a75d2d5af311e25"
+    },
+    "data/country/TR.json": {
+      "bytes": 544062,
+      "sha256": "7e7a55b2f3cb8a5dc69e30098527745a11946e5f546e5bbe6e83b6bb1ef4fc84"
+    },
+    "data/country/TW.json": {
+      "bytes": 10447,
+      "sha256": "3c2f2af79c845751e43cec3eaa659dd7efe560a90fe7a7aa6fe53f922c56aa82"
+    },
+    "data/country/UA.json": {
+      "bytes": 7328,
+      "sha256": "05c816573402c5c7ec15899f761a1ebd093c04fb21d7059785812a2a58882594"
+    },
+    "data/country/US.json": {
+      "bytes": 1920447,
+      "sha256": "19ba8b87c2dc869dec3a47f5472675f4352e4e69c471cfc29e1c4206f2728551"
+    },
+    "data/country/UZ.json": {
+      "bytes": 7697,
+      "sha256": "0588c20cbe14641baa93638848c0f862f4264e49f5e01b6a815b3ed33c266ce3"
+    },
+    "data/country/VE.json": {
+      "bytes": 25505,
+      "sha256": "9e4878a35ea00bc76d17049b1d893f41f2cca3638f8bebdc35444702a5eea93a"
+    },
+    "data/country/VN.json": {
+      "bytes": 35662,
+      "sha256": "946d5a9f5f4937a35b0d8c5dfe4079925d985cda79eeb8e513b1a33f040266bb"
+    },
+    "data/country/ZA.json": {
+      "bytes": 380296,
+      "sha256": "e7dc4bd857ec8535d83bedc14efd5ef0c06e65edc4095af6911b5b66e2ca6580"
+    },
+    "data/country/ZW.json": {
+      "bytes": 45572,
+      "sha256": "af296dd766e816adbffcf82b93ce2c36ad8293d3cf3922242a1f9780a0631305"
+    },
+    "data/dams.json": {
+      "bytes": 2736497,
+      "sha256": "8ca46b60c14c8a430c4622b7523d05036b5d89af54143e8e2aedda9c09884c34"
+    },
+    "data/missing.json": {
+      "bytes": 398398,
+      "sha256": "5aad9b36d234d0713791be479d789b1da2fd84249cbf2cecc28398a0d11b2fe2"
+    },
+    "data/photos.json": {
+      "bytes": 834390,
+      "sha256": "925721829bcfc4f447e417c703ae1377270992e598cd6d88972df08d40ff19a8"
+    },
+    "data/stats.json": {
+      "bytes": 2652,
+      "sha256": "0b05a14f6dd5d92e557ff5f3f6da191d68560e123ffe46e2c87f229c2b18a97e"
+    }
+  }
+}

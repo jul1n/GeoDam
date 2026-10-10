@@ -1,0 +1,24 @@
+name: Quality
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: npm ci
+      - run: npm run test:unit
+      - run: npm run data:check
+      - run: python scripts/build_public.py --limit 10 --output .test-output/site
+      - run: python scripts/verify_backup.py schema.sql
+      - run: npm run db:local
+      - name: API integration
+        run: |
+          npx wrangler dev --port 8787 --var SECRET:geodam-test-secret-at-least-32-characters --var ADMIN_TOKEN:dev-admin-token --var IP_MODE:hash > /tmp/geodam-worker.log 2>&1 &
+          for i in $(seq 1 40); do curl -fsS http://127.0.0.1:8787/api/leaderboard?mode=map >/dev/null && break || sleep 1; done
+          npm test

@@ -9,7 +9,7 @@ const DICT = {
     "home.h1": "Où est ce barrage ?",
     "home.lead": "Plus de 9 000 barrages du monde entier, issus du registre de la CIGB. Pas de photo : juste une carte, des indices et votre instinct d'ingénieur.",
     "mode.map": "Carte muette", "mode.hilo": "Plus haut / plus bas", "mode.daily": "Barrage du jour",
-    "mode.map.d": "5 manches. Un nom, quelques indices : placez le barrage sur la carte. Plus vous êtes près, plus vous marquez (max 25 000).",
+    "mode.map.d": "5 manches, 3 niveaux : placez le barrage sur la carte d'après une photo et/ou des indices.",
     "mode.hilo.d": "Hauteur, volume, année, puissance : lequel est le plus grand ? La première erreur termine la partie.",
     "mode.daily.d": "Un barrage mystère par jour, le même pour tous.",
     "play": "Jouer", "lb.title": "Classements", "lb.loading": "Chargement…", "lb.empty": "Aucun score pour le moment — soyez le premier !",
@@ -57,7 +57,7 @@ const DICT = {
     "home.h1": "Where is this dam?",
     "home.lead": "Over 9,000 dams worldwide from the ICOLD register. No photos: just a map, clues and your engineer's instinct.",
     "mode.map": "Blank map", "mode.hilo": "Higher / lower", "mode.daily": "Dam of the day",
-    "mode.map.d": "5 rounds. A name and a few clues: place the dam on the map. The closer you are, the more you score (max 25,000).",
+    "mode.map.d": "5 rounds, 3 levels: place the dam on the map from a photo and/or clues.",
     "mode.hilo.d": "Height, volume, year, power: which one is bigger? The first mistake ends the game.",
     "mode.daily.d": "One mystery dam a day, the same for everyone.",
     "play": "Play", "lb.title": "Leaderboards", "lb.loading": "Loading…", "lb.empty": "No score yet — be the first!",
@@ -102,6 +102,18 @@ const DICT = {
 Object.assign(DICT.fr, EXTRA.fr, { "stat.len": "Longueur de crête (m)", "stat.el": "Altitude (m)", "stat.ca": "Bassin versant (km²)" });
 Object.assign(DICT.en, EXTRA.en, { "stat.len": "Crest length (m)", "stat.el": "Elevation (m)", "stat.ca": "Catchment area (km²)" });
 
+Object.assign(DICT.fr, {
+ "safe.label":"Confirmer avant de répondre","map.next2":"Utilisez le bouton Manche suivante.",
+ "end.ipnotice":"Votre score publié est associé à un identifiant pseudonymisé de connexion pour prévenir les abus, pendant 90 jours au maximum.",
+ "mission.bonus":"Bonus après enregistrement de la proposition : jusqu’à {n} points.",
+ "legal.datatxt":"Les scores publiés et les missions enregistrent un identifiant pseudonymisé de connexion pour limiter les abus. La configuration par défaut ne conserve pas les IP en clair. Les identifiants, le navigateur et le pays de connexion sont purgés automatiquement après 90 jours. Les propositions et leur historique peuvent être conservés pour documenter le registre. Vos préférences et votre profil restent dans votre navigateur. Les fonds de carte et photos nécessitent des requêtes à Esri et Wikimedia. Contactez l’éditeur indiqué ci-dessous pour exercer vos droits."
+});
+Object.assign(DICT.en, {
+ "safe.label":"Confirm before answering","map.next2":"Use the Next round button.",
+ "end.ipnotice":"Your published score is associated with a pseudonymous connection identifier for abuse prevention, for up to 90 days.",
+ "mission.bonus":"Bonus after saving the proposal: up to {n} points.",
+ "legal.datatxt":"Published scores and missions store a pseudonymous connection identifier to prevent abuse. The default configuration does not store raw IP addresses. Identifiers, browser and connection country are automatically purged after 90 days. Proposals and review history may be retained to document the register. Your profile remains in your browser. Maps and photos make requests to Esri and Wikimedia. Contact the publisher listed below to exercise your rights."
+});
 const KEY = "geodam-lang";
 let lang = "en";
 try { lang = localStorage.getItem(KEY); } catch { /* ignore */ }

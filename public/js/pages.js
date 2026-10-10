@@ -1,3 +1,4 @@
+import {tr} from "./experience.js";
 // Pages « site public » inspirées du cahier des charges : Explorer (recherche + fiches), Le registre en chiffres,
 // Glossaire (+ quiz), À propos / mentions légales. Et les helpers de fiche barrage partagés avec le jeu.
 import { t, getLang, countryOf } from "./i18n.js";
@@ -24,7 +25,8 @@ const awardAndToast = (ev) => {
 export { awardAndToast };
 
 export function openSheet(d) {
-  awardAndToast({ sheet: 1, xp: 1 });
+  awardAndToast({id:"sheet:"+d.id,sheet:1,xp:1});
+  const previousFocus=document.activeElement;
   const row = (k, v) => `<dt>${k}</dt><dd>${v == null || v === "" ? `<span class="muted">${t("sheet.missing")}</span>` : esc(v)}</dd>`;
   const dlg = document.createElement("dialog");
   dlg.className = "sheet"; dlg.setAttribute("aria-labelledby", "sheet-h");
@@ -36,13 +38,16 @@ export function openSheet(d) {
       ${row(t("clue.volume"), d.v > 0 ? fmt(d.v) + " hm³" : null)}${row(t("clue.catch"), d.ca ? fmt(d.ca) + " km²" : null)}${row(t("clue.power"), d.mw > 0 ? fmt(d.mw) + " MW" : null)}
       ${row(t("clue.use"), uses(d).join(", "))}${d.la != null ? row(t("sheet.coords"), `${d.la.toFixed(4)}, ${d.lo.toFixed(4)}`) : ""}
     </dl>${factsHtml(d)}${d.la != null ? '<div id="sheet-map" class="sheet-map" role="img" aria-label="Map"></div>' : ""}`;
+  if(d.id){
+    const link=document.createElement("a");link.href=getLang()+"/barrages/"+encodeURIComponent(d.id)+"/";link.textContent=tr("Ouvrir la fiche partageable","Open shareable dam page");dlg.append(link);
+  }
   document.body.append(dlg);
-  dlg.addEventListener("close", () => { sheetMap?.remove(); dlg.remove(); });
+  dlg.addEventListener("close", () => { sheetMap?.remove(); dlg.remove();previousFocus?.focus(); });
   dlg.showModal();
   let sheetMap = null;
   if (d.la != null && window.L) {
-    sheetMap = L.map("sheet-map", { zoomControl: true, attributionControl: false }).setView([d.la, d.lo], 9);
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 15 }).addTo(sheetMap);
+    sheetMap = L.map("sheet-map", { zoomControl: true, attributionControl: true }).setView([d.la, d.lo], 9);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom:15,attribution:"© Esri" }).addTo(sheetMap);
     L.circleMarker([d.la, d.lo], { radius: 8, color: "#fff", weight: 3, fillColor: "#ee813c", fillOpacity: 1 }).addTo(sheetMap);
     setTimeout(() => sheetMap?.invalidateSize(), 60);
   }
@@ -54,6 +59,7 @@ function exploreBlock(el, { dams, pools }) {
     <input type="search" id="q" class="bigsearch" placeholder="${esc(t("explore.search"))}" autocomplete="off"><p class="muted" id="qinfo">${t("explore.hint")}</p>
     <ul class="results" id="res"></ul>`;
   const all = () => { const seen = new Set(), out = []; for (const d of [...dams, ...[...pools.values()].flat()]) if (!seen.has(d.id)) { seen.add(d.id); out.push(d); } return out; };
+  const coverage=document.createElement("p");coverage.className="muted small";coverage.textContent=tr("Recherche dans les "+all().length+" barrages chargés ; ce n’est pas tout le registre.","Searching "+all().length+" loaded dams; this is not the complete register.");el.insertBefore(coverage,el.querySelector("#q"));
   const hay = new WeakMap();
   const run = () => {
     const q = norm($("#q", el).value).trim(), box = $("#res", el);
@@ -182,6 +188,6 @@ export function renderAbout(el, { demo }) {
     <h2>${t("about.icold")}</h2><div class="icold-row"><img class="logo-icold" src="img/logo-icold.png" alt="ICOLD · CIGB" width="96" height="96"><p>${t("about.icoldtxt")}</p></div><h2>${t("about.data")}</h2><p>${t("about.datatxt")}</p></div>
     <div class="panel"><h2>${t("about.brief")}</h2><p class="muted">${t("about.brief.lead")}</p>
     <ul class="brief">${brief.map(([n, st, note]) => `<li><span class="pill ${st}">${t("brief." + st)}</span><div><b>${t("brief." + n)}</b>${note ? `<br><small>${t("brief." + note)}</small>` : ""}</div></li>`).join("")}</ul></div>
-    <div class="panel" id="legal"><h1 class="h2">${t("legal.title")}</h1><h2>${t("legal.who")}</h2><p>${t("legal.whotxt")}</p>
+    <div class="panel" id="legal"><h2 class="h2">${t("legal.title")}</h2><h2>${t("legal.who")}</h2><p>${t("legal.whotxt")}</p>
     <h2>${t("legal.data")}</h2><p>${t("legal.datatxt")}</p><h2>${t("legal.host")}</h2><p>${t("legal.hosttxt")}</p><h2>${t("legal.photos.h")}</h2><p>${t("legal.photos")}</p>${demo ? `<p class="notice">${t("legal.demo")}</p>` : ""}</div></section>`;
 }

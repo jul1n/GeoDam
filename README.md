@@ -1,7 +1,7 @@
 # GéoDam
 
 Jeu web bilingue (FR/EN) autour du **Registre mondial des barrages** de la CIGB/ICOLD (62 362 barrages, édition 2025).
-Quatre défis (dont un test avec photos libres), un profil joueur (XP, niveaux, badges), des pages « site public » (explorer, registre en chiffres, glossaire) et une
+Trois défis (carte à 3 niveaux avec photos libres, barrage du jour, mission cartographe), un profil joueur (XP, niveaux, badges), des pages « site public » (explorer, registre en chiffres, glossaire) et une
 **mission cartographe** qui fait compléter par les joueurs les ~20 000 barrages sans coordonnées.
 
 - **Démo** (GitHub Pages, serveur simulé dans le navigateur) : https://jul1n.github.io/GeoDam/ — à activer une fois, voir « Démo GitHub Pages ».
@@ -15,8 +15,7 @@ Quatre défis (dont un test avec photos libres), un profil joueur (XP, niveaux, 
 
 | Mode | Principe |
 |---|---|
-| 🗺️ Carte muette | 5 manches : placer le barrage. 3 niveaux d'indices payants (−10 % chacun) : contexte → exploitant/réservoir/dimensions → pays/ville. |
-| 📷 Photo-mystère (test) | 5 manches : une vraie photo d'un barrage (≈ 1 500 barrages, Wikimedia Commons), à situer sur la carte ; mêmes indices payants. Auteur et licence affichés. |
+| 🗺️ Carte (3 niveaux) | 5 manches : placer le barrage sur la carte. 🟢 **Facile** : photo + indices, barrages les plus célèbres (500 photos tirées du registre) ; 🟡 **Moyen** : photo seule, barrages moins connus ; 🔴 **Difficile** : indices seuls, barrages moins connus. 3 indices payants (−10 % chacun). Un classement par niveau ; les niveaux difficiles rapportent plus d'XP. |
 | 📅 Barrage du jour | Même barrage pour tous, 6 essais, un indice de plus à chaque erreur. Règles résumées dans un encart repliable de la partie. |
 | 🛰️ Mission cartographe | 5 manches : 2 barrages « étalons » (position connue, mesurent la fiabilité) + 3 barrages **sans coordonnées** : la proposition est enregistrée. |
 

@@ -58,8 +58,27 @@ export function poolInfo(dams, scope) {
   return { scale, foundKm: Math.max(3, scale / 60), distinct: scope.startsWith("ct:") };
 }
 
-const okPoint = (p, len = 2) => Array.isArray(p) && p.length === len && Math.abs(p[0]) <= 90 && p.every(Number.isFinite);
+const okPoint = (p, len = 2) => Array.isArray(p) && p.length === len && Math.abs(p[0]) <= 90 && Math.abs(p[1]) <= 180 && p.every(Number.isFinite);
 export const wrapLng = (lng) => ((((lng + 180) % 360) + 360) % 360) - 180;
+
+// ---------- Niveaux de la carte : facile (photo + indices, barrages célèbres), moyen (photo seule, moins connus), difficile (indices seuls) ----------
+export const LEVELS = ["easy", "medium", "hard"];
+export const MIN_LEVEL_POOL = 8;
+export const EASY_RANK = 500;     // en monde : les 500 premières photos (Wikidata trié par notoriété) ayant des indices du registre
+// Un pool est jouable s'il a assez de barrages (et, hors pays, au moins 5 pays distincts pour les 5 manches).
+export const poolUsable = (pool, distinct) => pool.length >= MIN_LEVEL_POOL && (!distinct || new Set(pool.map((d) => d.iso)).size >= MAP_ROUNDS);
+export function levelPool(level, scope, dams, photos) {
+  const inScope = (x) => scope === "world" || (scope.startsWith("ct:") ? CONTINENTS[scope.slice(3)]?.includes(x.ct) : x.iso === scope);
+  const ph = photos.map((p, i) => [p, i]).filter(([p]) => inScope(p));
+  const easy = ph.filter(([p, i]) => p.reg && (scope !== "world" || i < EASY_RANK)).map(([p]) => p);
+  if (level === "easy") return easy;
+  if (level === "medium") {
+    const e = new Set(easy), rest = ph.map(([p]) => p).filter((p) => !e.has(p));
+    return rest.length >= MIN_LEVEL_POOL ? rest : ph.map(([p]) => p);
+  }
+  const hard = dams.filter((d) => d.f === 2);   // barrages moins connus
+  return hard.length >= 50 ? hard : dams;
+}
 
 // ---------- Mode 1 : carte muette (réponse = [lat, lng, indicesUtilisés]) ----------
 export function pickMapRounds(dams, seed, distinct = true) {
@@ -72,7 +91,7 @@ export function pickMapRounds(dams, seed, distinct = true) {
   return out;
 }
 export function mapScore(dams, seed, guesses, info = WORLD) {
-  if (!Array.isArray(guesses) || guesses.length !== MAP_ROUNDS || !guesses.every((g) => okPoint(g, 3) && g[2] >= 0 && g[2] <= MAX_HINTS)) return null;
+  if (!Array.isArray(guesses) || guesses.length !== MAP_ROUNDS || !guesses.every((g) => okPoint(g, 3) && Number.isInteger(g[2]) && g[2] >= 0 && g[2] <= MAX_HINTS)) return null;
   const rounds = pickMapRounds(dams, seed, info.distinct).map((i, k) => {
     const d = dams[i], km = distanceKm(guesses[k][0], guesses[k][1], d.la, d.lo);
     return { km, pts: Math.round(mapPoints(km, info.scale) * hintFactor(guesses[k][2])) };
@@ -119,11 +138,28 @@ export function missionScore(known, missing, seed, guesses) {
     else contrib.push({ id: missing[rd.i].id, la: g[0], lo: g[1] });
   });
   const trust = pts / (kn * 5000);
-  return { score: pts + MISSION_BONUS * contrib.length, trust, contrib };
+  return { score: pts, trust, contrib };
 }
-// médiane géographique pondérée simple (lat/lon séparées) + dispersion maximale autour d'elle
+// Weighted spherical consensus. Candidates always require human review.
 export function consensus(points) {
-  const med = (a) => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-  const la = med(points.map((p) => p.la)), lo = med(points.map((p) => p.lo));
-  return { la, lo, n: points.length, spread: Math.max(...points.map((p) => distanceKm(la, lo, p.la, p.lo))) };
+  const valid=points.filter(p=>Number.isFinite(p.la)&&Number.isFinite(p.lo)&&Math.abs(p.la)<=90&&Math.abs(p.lo)<=180);
+  if(!valid.length)return null;
+  const weight=p=>Math.max(0.01,Math.min(1,Number(p.trust)||0.3));
+  const mean=ps=>{
+    let x=0,y=0,z=0;
+    for(const p of ps){const w=weight(p),a=p.la*rad,b=p.lo*rad;x+=w*Math.cos(a)*Math.cos(b);y+=w*Math.cos(a)*Math.sin(b);z+=w*Math.sin(a);}
+    if(Math.hypot(x,y,z)<1e-9)return {la:ps[0].la,lo:ps[0].lo};
+    return {la:Math.atan2(z,Math.hypot(x,y))/rad,lo:Math.atan2(y,x)/rad};
+  };
+  const clusters=[];
+  for(const p of valid){
+    const c=clusters.find(c=>distanceKm(p.la,p.lo,c.center.la,c.center.lo)<=10);
+    if(c){c.points.push(p);c.center=mean(c.points);c.weight+=weight(p);}
+    else clusters.push({points:[p],center:p,weight:weight(p)});
+  }
+  clusters.sort((a,b)=>b.weight-a.weight);
+  const best=clusters[0],center=mean(best.points),spread=Math.max(...best.points.map(p=>distanceKm(center.la,center.lo,p.la,p.lo)));
+  return {...center,n:best.points.length,total:valid.length,spread,outliers:valid.length-best.points.length,
+    conflicted:!!clusters[1]&&clusters[1].weight>=best.weight*0.5,
+    ready:best.points.length>=3&&spread<=5&&best.points.length/valid.length>=0.75};
 }

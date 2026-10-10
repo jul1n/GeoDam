@@ -5,3 +5,10 @@ node_modules/
 .DS_Store
 
 backup.sql
+
+public/fr/
+public/en/
+public/sitemap*.xml
+public/robots.txt
+.test-output/
+backups/

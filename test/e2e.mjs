@@ -4,6 +4,9 @@ import * as S from "../public/js/shared.js";
 
 const BASE = process.argv[2] || "http://127.0.0.1:8787";
 const dams = JSON.parse(readFileSync(new URL("../public/data/dams.json", import.meta.url), "utf8"));
+const photos = JSON.parse(readFileSync(new URL("../public/data/photos.json", import.meta.url), "utf8"));
+const LP = (level, scope, pool) => S.levelPool(level, scope, pool, photos);   // pool de la carte selon le niveau (comme client et serveur)
+const HP = LP("hard", "world", dams);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let failed = 0;
 const check = (name, cond, extra = "") => { console.log(`${cond ? "ok  " : "FAIL"} ${name} ${extra}`); if (!cond) failed++; };
@@ -11,9 +14,9 @@ const post = async (path, body) => { const r = await fetch(BASE + path, { method
 const tag = Math.random().toString(36).slice(2, 6);
 
 // ----- map : parties parfaite + falsifiée -----
-const m = await post("/api/session", { mode: "map" });
-const idx = S.pickMapRounds(dams, m.seed);
-const perfect = idx.map((i) => [dams[i].la, dams[i].lo, 0]);
+const m = await post("/api/session", { mode: "map", level: "hard" });
+const idx = S.pickMapRounds(HP, m.seed);
+const perfect = idx.map((i) => [HP[i].la, HP[i].lo, 0]);
 let r = await post("/api/finish", { token: m.token, guesses: perfect });
 check("map : trop rapide refusé", r.status === 422, JSON.stringify(r));
 await sleep(15500);
@@ -28,11 +31,11 @@ check("map : claim rejouée refusée", (await post("/api/submit", { claim: r.cla
 
 // ----- indices : -10 % par indice utilisé ; indices hors plage refusés -----
 const mh = await post("/api/session", { mode: "map" });
-const hidx = S.pickMapRounds(dams, mh.seed);
+const hidx = S.pickMapRounds(HP, mh.seed);
 await sleep(15500);
-const hr = await post("/api/finish", { token: mh.token, guesses: hidx.map((i, k) => [dams[i].la, dams[i].lo, k === 0 ? 3 : 0]) });
+const hr = await post("/api/finish", { token: mh.token, guesses: hidx.map((i, k) => [HP[i].la, HP[i].lo, k === 0 ? 3 : 0]) });
 check("indices : 3 indices = -30 % sur la manche", hr.score === 25000 - 1500, JSON.stringify({ s: hr.score, e: hr.error }));
-check("indices : 4 indices refusés", (await post("/api/finish", { token: mh.token, guesses: hidx.map((i) => [dams[i].la, dams[i].lo, 4]) })).status === 400);
+check("indices : 4 indices refusés", (await post("/api/finish", { token: mh.token, guesses: hidx.map((i) => [HP[i].la, HP[i].lo, 4]) })).status >= 400);
 
 // ----- daily : trouvé du 1er coup -----
 const d = await post("/api/session", { mode: "daily" });
@@ -49,12 +52,12 @@ check("daily : 2e score même IP refusé", (await post("/api/submit", { claim: r
 // ----- mode pays : Luxembourg-like petit pays (FR) et Chine complète -----
 for (const iso of ["FR", "CN"]) {
   const pool = JSON.parse(readFileSync(new URL(`../public/data/country/${iso}.json`, import.meta.url), "utf8"));
-  const info = S.poolInfo(pool, iso);
+  const info = S.poolInfo(pool, iso), lp = LP("hard", iso, pool);
   const cs = await post("/api/session", { mode: "map", scope: iso });
-  const rounds = S.pickMapRounds(pool, cs.seed, info.distinct);
+  const rounds = S.pickMapRounds(lp, cs.seed, info.distinct);
   check(`${iso} : 5 manches distinctes`, rounds.length === 5 && new Set(rounds).size === 5);
   await sleep(15500);
-  const cr = await post("/api/finish", { token: cs.token, guesses: rounds.map((i) => [pool[i].la, pool[i].lo, 0]) });
+  const cr = await post("/api/finish", { token: cs.token, guesses: rounds.map((i) => [lp[i].la, lp[i].lo, 0]) });
   check(`${iso} : score parfait (échelle ${Math.round(info.scale)} km)`, cr.score === 25000, JSON.stringify({ s: cr.score, e: cr.error }));
   const cok = await post("/api/submit", { claim: cr.claim, name: `Pays ${iso} ${tag}` });
   check(`${iso} : enregistré`, cok.ok === true, JSON.stringify(cok));
@@ -64,12 +67,12 @@ for (const iso of ["FR", "CN"]) {
 check("scope inconnu refusé", (await post("/api/session", { mode: "map", scope: "XX" })).status === 400);
 // ----- continent : sous-ensemble du monde, manches de pays distincts, classement propre -----
 {
-  const key = "EUROPE", pool = S.continentPool(dams, key), info = S.poolInfo(pool, "ct:" + key);
+  const key = "EUROPE", pool = S.continentPool(dams, key), info = S.poolInfo(pool, "ct:" + key), lp = LP("hard", "ct:" + key, pool);
   const cs = await post("/api/session", { mode: "map", scope: "ct:" + key });
-  const rounds = S.pickMapRounds(pool, cs.seed, info.distinct);
-  check("continent : 5 manches, pays distincts", rounds.length === 5 && new Set(rounds.map((i) => pool[i].iso)).size === 5);
+  const rounds = S.pickMapRounds(lp, cs.seed, info.distinct);
+  check("continent : 5 manches, pays distincts", rounds.length === 5 && new Set(rounds.map((i) => lp[i].iso)).size === 5);
   await sleep(15500);
-  const cr = await post("/api/finish", { token: cs.token, guesses: rounds.map((i) => [pool[i].la, pool[i].lo, 0]) });
+  const cr = await post("/api/finish", { token: cs.token, guesses: rounds.map((i) => [lp[i].la, lp[i].lo, 0]) });
   check(`continent : score parfait (échelle ${Math.round(info.scale)} km)`, cr.score === 25000, JSON.stringify({ s: cr.score, e: cr.error }));
   check("continent : enregistré", (await post("/api/submit", { claim: cr.claim, name: "Europe " + tag })).ok === true);
   const clb = await (await fetch(`${BASE}/api/leaderboard?mode=map&scope=ct:${key}`)).json();
@@ -83,11 +86,17 @@ const ms = await post("/api/session", { mode: "mission" });
 const mr = S.pickMissionRounds(dams, missing, ms.seed);
 const mg = mr.map((rd) => (rd.src === "k" ? [dams[rd.i].la, dams[rd.i].lo] : [48.85 + Math.random() * 0.01, 2.35]));
 await sleep(15500);
-const mres = await post("/api/finish", { token: ms.token, guesses: mg });
+const ev = mr.filter((rd) => rd.src === "m").map((rd) => ({ id: missing[rd.i].id, source: "https://example.org/preuve", accuracy_km: 5, comment: "test e2e" }));   // la mission exige une source par proposition
+const mres = await post("/api/finish", { token: ms.token, guesses: mg, evidence: ev });
 check("mission : score = 2 étalons parfaits + 3 contributions", mres.score === 10000 + 3 * S.MISSION_BONUS, JSON.stringify({ s: mres.score, e: mres.error }));
 check("mission : 3 propositions enregistrées", mres.community?.saved === 3 && mres.community.trust === 100, JSON.stringify(mres.community));
-const again = await post("/api/finish", { token: ms.token, guesses: mg });
-check("mission : rejouer le même token n'ajoute rien", again.community?.saved === 0);
+const again = await post("/api/finish", { token: ms.token, guesses: mg, evidence: ev });
+check("mission : rejouer la même partie renvoie le même résultat (idempotent)", again.score === mres.score && again.community?.saved === mres.community?.saved);
+const nosrc = await post("/api/session", { mode: "mission" });
+const nr = S.pickMissionRounds(dams, missing, nosrc.seed);
+await sleep(15500);
+const nres = await post("/api/finish", { token: nosrc.token, guesses: nr.map((rd) => (rd.src === "k" ? [dams[rd.i].la, dams[rd.i].lo] : [10, 10])) });
+check("mission : sans source, aucune proposition enregistrée", nres.community?.saved === 0 && nres.score === 10000, JSON.stringify({ s: nres.score, c: nres.community }));
 const prog = await (await fetch(BASE + "/api/mission/progress")).json();
 check("mission : progression visible", prog.proposals >= 3 && prog.damsTouched >= 3, JSON.stringify(prog));
 check("export admin refusé sans jeton", (await fetch(BASE + "/api/admin/contributions")).status === 401);
@@ -100,17 +109,21 @@ const lazy = await post("/api/finish", { token: ms2.token, guesses: mr2.map(() =
 check("mission : clics au hasard sur les étalons => propositions écartées", lazy.community?.saved === 0 && lazy.community.trust < 15, JSON.stringify(lazy.community));
 check("mission refusée hors monde", (await post("/api/session", { mode: "mission", scope: "FR" })).status === 400);
 
-// ----- photo-mystère : même barème que la carte, pool de photos libres -----
-{
-  const photos = JSON.parse(readFileSync(new URL("../public/data/photos.json", import.meta.url), "utf8"));
-  const ps = await post("/api/session", { mode: "photo" });
-  const pr = S.pickMapRounds(photos, ps.seed, true);
-  check("photo : 5 manches de pays distincts", pr.length === 5 && new Set(pr.map((i) => photos[i].iso)).size === 5);
+// ----- niveaux : facile (photo + indices, barrages célèbres) et moyen (photo seule, moins connus) -----
+for (const level of ["easy", "medium"]) {
+  const lp = LP(level, "world", dams);
+  const ls = await post("/api/session", { mode: "map", level });
+  const lr = S.pickMapRounds(lp, ls.seed, true);
+  check(`${level} : 5 manches de pays distincts (pool ${lp.length})`, lr.length === 5 && new Set(lr.map((i) => lp[i].iso)).size === 5);
   await sleep(15500);
-  const pres = await post("/api/finish", { token: ps.token, guesses: pr.map((i) => [photos[i].la, photos[i].lo, 0]) });
-  check("photo : score parfait 25000", pres.score === 25000, JSON.stringify({ s: pres.score, e: pres.error }));
-  check("photo refusée hors monde", (await post("/api/session", { mode: "photo", scope: "FR" })).status === 400);
+  const res = await post("/api/finish", { token: ls.token, guesses: lr.map((i) => [lp[i].la, lp[i].lo, 0]) });
+  check(`${level} : score parfait 25000`, res.score === 25000, JSON.stringify({ s: res.score, e: res.error }));
+  check(`${level} : enregistré`, (await post("/api/submit", { claim: res.claim, name: `${level} ${tag}` })).ok === true);
+  const lb2 = await (await fetch(`${BASE}/api/leaderboard?mode=map&level=${level}`)).json();
+  check(`${level} : classement séparé`, lb2.entries.length === 1 && lb2.entries[0].name.startsWith(level), JSON.stringify(lb2.entries));
 }
+check("niveau inconnu refusé", (await post("/api/session", { mode: "map", level: "x" })).status === 400);
+check("mode photo retiré (fusionné dans la carte)", (await post("/api/session", { mode: "photo" })).status === 400);
 
 const lb = await (await fetch(BASE + "/api/leaderboard?mode=map")).json();
 check("classement map contient le joueur", lb.entries.some((e) => e.name === "Test " + tag));

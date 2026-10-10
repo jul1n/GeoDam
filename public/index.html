@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>GéoDam</title>
-  <meta name="description" content="">
+  <meta name="description" content="GéoDam : découvrez les barrages du monde, jouez à les localiser et contribuez à documenter le registre ICOLD.">
   <meta name="theme-color" content="#111a4c">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icons/favicon-64.png">
@@ -35,7 +35,8 @@
       </div>
     </div>
   </header>
-  <main id="app" tabindex="-1" aria-live="polite"></main>
+  <main id="app" tabindex="-1"></main>
+  <div id="announcements" class="sr" role="status" aria-live="polite" aria-atomic="true"></div>
   <footer>
     <div class="foot-row"><a href="https://www.icold-cigb.org/" target="_blank" rel="noopener" aria-label="ICOLD CIGB"><img src="img/logo-icold.png" alt="ICOLD · CIGB" width="48" height="48"></a><p data-i18n="foot.data"></p></div>
     <p><a href="#/about" data-i18n="foot.about"></a> · <a href="#/glossary" data-i18n="foot.glossary"></a> · <a href="https://github.com/jul1n/GeoDam" target="_blank" rel="noopener" data-i18n="foot.src"></a></p>

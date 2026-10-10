@@ -10,9 +10,19 @@
     "db:backup": "wrangler d1 export geodam --remote --output=backup.sql",
     "db:remote": "wrangler d1 execute geodam --remote --file=schema.sql",
     "deploy": "wrangler deploy",
-    "test": "node test/e2e.mjs"
+    "test": "node test/e2e.mjs",
+    "build": "python scripts/build_public.py",
+    "predeploy": "python scripts/build_public.py --production",
+    "test:unit": "node --test test/unit.mjs",
+    "data:check": "python scripts/check_data.py",
+    "db:migrate:local": "wrangler d1 migrations apply geodam --local",
+    "db:migrate:remote": "wrangler d1 migrations apply geodam --remote",
+    "db:backup:verified": "powershell -NoProfile -File scripts/backup.ps1"
   },
-  "dependencies": { "leaflet": "1.9.4" },
-  "devDependencies": { "wrangler": "^4" }
+  "dependencies": {
+    "leaflet": "1.9.4"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
 }
-
