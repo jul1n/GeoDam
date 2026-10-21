@@ -166,9 +166,15 @@ async function missionProgress(env){
   const accepted=await db(env).first("SELECT COUNT(*) AS n FROM contribution_reviews r WHERE status='accepted' AND id=(SELECT MAX(id) FROM contribution_reviews WHERE dam_id=r.dam_id)");
   return json({proposals:counts.n,contributors:counts.p,damsTouched:counts.d,validated:rows.filter(r=>r.ready&&!r.conflicted).length,accepted:accepted.n,pool:missing.length,totalMissing:registerStats.total-registerStats.geo});
 }
-const isAdmin=(request,env)=>env.ADMIN_TOKEN&&request.headers.get("Authorization")==="Bearer "+env.ADMIN_TOKEN;
+// Comparaison en temps constant (condensats SHA-256 de même longueur) : pas de fuite par timing.
+const isAdmin=async(request,env)=>{
+  const given=request.headers.get("Authorization")||"";
+  if(!env.ADMIN_TOKEN||!given.startsWith("Bearer "))return false;
+  const [a,b]=await Promise.all([given.slice(7),env.ADMIN_TOKEN].map(v=>crypto.subtle.digest("SHA-256",enc.encode(v))));
+  return crypto.subtle.timingSafeEqual(a,b);
+};
 async function adminContributions(request,url,env){
-  if(!isAdmin(request,env))return fail("invalid_claim",401);
+  if(!await isAdmin(request,env))return fail("invalid_claim",401);
   const meta=new Map(missing.map(m=>[m.id,m]));
   const rows=(await consensusRows(env)).map(r=>({dam_id:r.id,name:meta.get(r.id)?.n,country:meta.get(r.id)?.ce,lat:+r.la.toFixed(5),lon:+r.lo.toFixed(5),independent_votes:r.n,total_votes:r.total,outliers:r.outliers,spread_km:Math.round(r.spread),avg_trust:r.trust,status:r.ready&&!r.conflicted?"ready_for_review":"needs_more_votes"}));
   if(url.searchParams.get("format")==="csv"){
@@ -179,7 +185,7 @@ async function adminContributions(request,url,env){
   return json({rows});
 }
 async function reviewContribution(request,env){
-  if(!isAdmin(request,env))return fail("invalid_claim",401);
+  if(!await isAdmin(request,env))return fail("invalid_claim",401);
   const b=await request.json();
   if(!missingIds.has(b.dam_id)||!["in_review","accepted","rejected"].includes(b.status)||typeof b.note!=="string"||!b.note.trim()||b.note.length>1000||typeof b.reviewer!=="string"||!b.reviewer.trim()||b.reviewer.length>100)return fail("invalid_game");
   if(b.status==="accepted"&&(!Number.isFinite(b.lat)||Math.abs(b.lat)>90||!Number.isFinite(b.lon)||Math.abs(b.lon)>180))return fail("invalid_game");
@@ -192,7 +198,7 @@ async function reviewContribution(request,env){
   ]);return json({ok:true});
 }
 async function contributionDetail(request,url,env){
-  if(!isAdmin(request,env))return fail("invalid_claim",401);
+  if(!await isAdmin(request,env))return fail("invalid_claim",401);
   const id=url.searchParams.get("id");
   return json({proposals:await db(env).all("SELECT id,dam_id,la,lo,trust,source,comment,accuracy_km,dataset_version,status,created_at FROM contributions WHERE dam_id=? ORDER BY id DESC",id),
     history:await db(env).all("SELECT status,lat,lon,note,reviewer,created_at FROM contribution_reviews WHERE dam_id=? ORDER BY id DESC",id)});
